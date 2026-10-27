@@ -9,7 +9,7 @@
     {
       "name": "dev-pipeline",
       "source": "./plugins/dev-pipeline",
-      "description": "계약 문서 → 병렬 worktree 구현 → 별도 에이전트 리뷰 흐름의 멀티 에이전트 개발 파이프라인",
+      "description": "계약 문서 → 작업 분할 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex)의 멀티 에이전트 개발 파이프라인",
       "category": "development",
       "tags": ["workflow", "multi-agent", "worktree", "review"]
     }
