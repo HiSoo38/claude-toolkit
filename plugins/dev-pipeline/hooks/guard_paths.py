@@ -66,7 +66,8 @@ def deny(reason):
 
 def main():
     try:
-        payload = json.load(sys.stdin)
+        # Claude Code 는 훅 입력을 UTF-8 로 보낸다. Windows 의 기본 stdin 인코딩(cp949 등)으로 읽으면 한글 경로가 깨진다
+        payload = json.loads(sys.stdin.buffer.read().decode("utf-8"))
     except (ValueError, OSError):
         return
 
