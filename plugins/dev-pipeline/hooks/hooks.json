@@ -10,6 +10,28 @@
             "timeout": 10
           }
         ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if python3 -c '' >/dev/null 2>&1; then py=python3; else py=python; fi; \"$py\" \"${CLAUDE_PLUGIN_ROOT}/hooks/log_agents.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "^dev-pipeline:",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if python3 -c '' >/dev/null 2>&1; then py=python3; else py=python; fi; \"$py\" \"${CLAUDE_PLUGIN_ROOT}/hooks/log_agents.py\"",
+            "timeout": 10
+          }
+        ]
       }
     ]
   }
