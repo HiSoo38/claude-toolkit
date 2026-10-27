@@ -1,7 +1,7 @@
 {
   "name": "dev-pipeline",
   "displayName": "Dev Pipeline",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "계약 문서(requirements → schema → api-spec)를 먼저 확정하고, 작업을 웨이브로 나눠 Orca worktree 에서 여러 에이전트가 동시에 구현 · 리뷰(Claude · Codex)까지 끝내는 멀티 에이전트 개발 파이프라인",
   "author": {
     "name": "HiSoo38",

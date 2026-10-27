@@ -7,6 +7,7 @@
 
 ### 변경
 
+- [dev-pipeline] 0.3.0 — 리뷰를 통과한 작업은 `/work-task` 가 **각 사용자의 커밋 규칙**(전역 · 프로젝트 CLAUDE.md)대로 작업 브랜치에 커밋하고, push 는 항상 사용자에게 묻는다. 규칙이 없을 때만 기본 형식을 쓴다. 설정 `작업 브랜치 커밋: 자동 | 사람`, `push: 물어봄 | 안 함`. `/wave-status` 에 커밋 · push 상태 열
 - [dev-pipeline] 0.2.0 — 구현 계획 문서. `/plan-tasks` 가 계획서(`docs/tasks/plan.md`: 목표·범위, 작업 간 공통 약속, 작업·웨이브, 공유 파일 소유, 테스트 전략, 위험), 구현 체크리스트(`checklist.md`: 작업마다 순서대로 따라 하면 끝나는 `T<번호>-<순번>` 항목), 작업 카드(`T<번호>.md`)를 만든다. 작업별 결과는 `results/T<번호>.md` 에 남는다
 - [dev-pipeline] 0.2.0 — 진행 상황 보기. 새 훅 `hooks/log_agents.py` 가 dev-pipeline 에이전트의 시작·끝(작업 설명, 걸린 시간, 결과 첫 줄)을 `.git/dev-pipeline/progress.log` 에 자동으로 남기고, Codex 리뷰와 작업 단계도 같은 로그에 남는다. `/run-wave` 는 띄운 작업에 Orca 읽지 않음 표시를 달고 첫 작업 탭을 앞으로 띄우며 보는 곳을 알려 준다. `/wave-status` 가 로그의 최근 줄을 보여준다
 - [dev-pipeline] 0.2.0 — `/work-task` 는 블로커를 스스로 해소 처리하지 않는다 (고치고 재리뷰해 0 이 되거나, 오탐 의심이면 사람 확인 필요로 넘긴다). 리뷰어는 리뷰 뒤에 쓰는 `docs/tasks/results/` 가 없는 것을 문제 삼지 않는다
