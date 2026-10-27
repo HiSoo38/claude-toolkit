@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if python3 -c '' >/dev/null 2>&1; then py=python3; else py=python; fi; \"$py\" \"${CLAUDE_PLUGIN_ROOT}/hooks/guard_paths.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  }
+}

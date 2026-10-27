@@ -1,0 +1,14 @@
+{
+  "name": "dev-pipeline",
+  "displayName": "Dev Pipeline",
+  "version": "0.1.0",
+  "description": "계약 문서(requirements → schema → api-spec)를 먼저 확정하고, 기능별 worktree 병렬 구현과 별도 에이전트 리뷰로 진행하는 멀티 에이전트 개발 파이프라인",
+  "author": {
+    "name": "HiSoo38",
+    "url": "https://github.com/HiSoo38"
+  },
+  "homepage": "https://github.com/HiSoo38/claude-toolkit/tree/main/plugins/dev-pipeline",
+  "repository": "https://github.com/HiSoo38/claude-toolkit",
+  "license": "MIT",
+  "keywords": ["workflow", "multi-agent", "worktree", "contract-first", "code-review"]
+}
