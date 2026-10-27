@@ -1,0 +1,17 @@
+{
+  "name": "claude-toolkit",
+  "description": "HiSoo38 의 개인 Claude Code 플러그인 모음 (skill · agent · hook · MCP)",
+  "owner": {
+    "name": "HiSoo38",
+    "url": "https://github.com/HiSoo38"
+  },
+  "plugins": [
+    {
+      "name": "dev-pipeline",
+      "source": "./plugins/dev-pipeline",
+      "description": "계약 문서 → 병렬 worktree 구현 → 별도 에이전트 리뷰 흐름의 멀티 에이전트 개발 파이프라인",
+      "category": "development",
+      "tags": ["workflow", "multi-agent", "worktree", "review"]
+    }
+  ]
+}
