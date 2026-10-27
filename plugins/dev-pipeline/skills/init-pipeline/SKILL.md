@@ -84,7 +84,7 @@ AskUserQuestion 을 쓸 수 없는 환경(비대화형 실행 등)이면, 위 �
 
 - 만든 파일 / 건너뛴 파일 / 섹션만 추가한 파일 목록
 - 남은 `<!-- TODO -->` 위치
-- 다음 단계 안내: "planner 에이전트에게 요구사항을 설명해 `docs/requirements.md` 를 채우세요" → db-designer → api-designer → `/dev-pipeline:plan-tasks`
+- 다음 단계 안내: "planner 에이전트에게 요구사항을 설명해 `docs/requirements.md` 를 채우세요" → db-designer → api-designer → 사람 확정 → `/dev-pipeline:plan-tasks` → 커밋 → `/dev-pipeline:run-wave` (Orca 로 동시 실행)
 
 ## 하지 않는 것
 

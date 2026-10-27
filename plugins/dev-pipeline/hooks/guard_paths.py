@@ -6,7 +6,7 @@ Claude Code 가 Write / Edit / NotebookEdit 호출 직전에 stdin 으로 넘기
 
 - planner, db-designer, api-designer : 프로젝트의 docs/ 아래만 쓸 수 있다
 - implementer                        : docs/ 아래는 쓸 수 없다 (계약 문서 보호)
-- reviewer                           : 아무 데도 쓸 수 없다
+- reviewer, plan-reviewer            : 아무 데도 쓸 수 없다
 - 그 밖의 에이전트·메인 세션          : 관여하지 않는다
 
 막을 때는 permissionDecision "deny" JSON 을 출력하고 exit 0 으로 끝낸다.
@@ -20,7 +20,7 @@ import sys
 PLUGIN_NAME = "dev-pipeline"
 DOCS_ONLY_AGENTS = {"planner", "db-designer", "api-designer"}
 NO_DOCS_AGENTS = {"implementer"}
-READ_ONLY_AGENTS = {"reviewer"}
+READ_ONLY_AGENTS = {"reviewer", "plan-reviewer"}
 DOCS_DIR = "docs"
 
 
@@ -76,7 +76,7 @@ def main():
         return
 
     if role in READ_ONLY_AGENTS:
-        deny("dev-pipeline:reviewer 는 읽기 전용이다. 파일을 수정하지 말고 리뷰 결과만 보고하라.")
+        deny("dev-pipeline:{0} 는 읽기 전용이다. 파일을 수정하지 말고 리뷰 결과만 보고하라.".format(role))
 
     tool_input = payload.get("tool_input") or {}
     target = tool_input.get("file_path") or tool_input.get("notebook_path")
