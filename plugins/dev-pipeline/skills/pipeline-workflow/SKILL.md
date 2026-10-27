@@ -25,7 +25,7 @@ description: dev-pipeline 의 진행 규칙 (계약 문서 우선, 작업 하나
 4. **구현과 리뷰는 다른 에이전트가 한다.** implementer 가 쓴 코드는 `/dev-pipeline:review-diff` 로 읽기 전용 리뷰어가 본다. 리뷰어는 Claude(reviewer 에이전트), Codex, 둘 다 중에서 고르며 기본값은 CLAUDE.md "파이프라인 설정" 섹션에 있다. GitHub PR 에서는 `@codex review` 로 같은 기준(AGENTS.md "Review guidelines")의 리뷰를 받을 수 있다.
 5. **계약 변경은 사람 승인 후에만.** 구현 중 계약 문제를 발견하면 implementer 는 멈추고 보고한다. 사람이 승인하면 해당 문서 담당 에이전트(planner / db-designer / api-designer)가 고치고, 영향받는 작업을 다시 확인한다.
 6. **완료 조건**: 빌드 성공 + 테스트 통과 + 리뷰 블로커 0. 셋 중 하나라도 아니면 완료가 아니다.
-7. **띄우기는 자동, 머지는 사람.** `/run-wave` 가 Orca CLI 로 worktree 와 Claude 를 띄우고, 각 worktree 는 `/work-task` 로 리뷰 통과까지 간다. 커밋·머지·PR 은 사람이 검수한 뒤 한다. 다음 웨이브는 앞 웨이브가 머지된 뒤에 띄운다.
+7. **띄우기 · 커밋은 자동, push 는 묻고, 머지는 사람.** `/run-wave` 가 Orca CLI 로 worktree 와 Claude 를 띄우고, 각 worktree 는 `/work-task` 로 리뷰 통과까지 간 뒤 **사용자의 커밋 규칙대로** 작업 브랜치에 커밋한다 (설정 `작업 브랜치 커밋`). push 는 항상 사용자에게 묻는다. 머지 · PR 은 사람이 검수한 뒤 한다. 다음 웨이브는 앞 웨이브가 머지된 뒤에 띄운다.
 8. **리뷰 관문은 두 번.** 구현 전에 `/review-plan` 이 계획(계약 문서 + 작업 카드)이 목적에 맞게 짜였는지 보고, 통과해야 `/run-wave` 가 작업을 띄운다 (통과 뒤 문서가 바뀌면 다시 리뷰). 구현 후에는 `/review-diff` 가 작업 카드대로 됐는지, 이 변경이 다른 기능에 주는 영향, 에러 시나리오까지 보고, 블로커 0 이어야 사람에게 올라간다.
 
 ## 역할과 권한

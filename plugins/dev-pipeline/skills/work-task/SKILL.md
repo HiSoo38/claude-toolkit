@@ -1,9 +1,9 @@
 ---
 name: work-task
-description: 작업 worktree 안에서 작업 카드(docs/tasks/T<번호>.md) 하나를 끝까지 진행한다. implementer 에이전트에게 구현·테스트를 맡기고, /dev-pipeline:review-diff 로 리뷰받고, 블로커가 있으면 고쳐서 다시 리뷰받는다. 진행 상태는 Orca 카드(상태·코멘트)로 알린다. /run-wave 가 각 worktree 에서 자동으로 실행하며, 직접 실행해도 된다.
+description: 작업 worktree 안에서 작업 카드(docs/tasks/T<번호>.md) 하나를 끝까지 진행한다. implementer 에이전트에게 구현·테스트를 맡기고, /dev-pipeline:review-diff 로 리뷰받고, 블로커가 있으면 고쳐서 다시 리뷰받고, 통과하면 사용자의 커밋 규칙대로 작업 브랜치에 커밋한 뒤 push 는 사용자에게 묻는다. 진행 상태는 Orca 카드(상태·코멘트)로 알린다. /run-wave 가 각 worktree 에서 자동으로 실행하며, 직접 실행해도 된다.
 argument-hint: "T<번호> [--allow-draft]"
 disable-model-invocation: true
-allowed-tools: Bash(orca worktree set *) Bash(orca status*) Bash(printf *) Bash(mkdir *) Bash(git rev-parse *) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *) Read Glob Grep
+allowed-tools: Bash(orca worktree set *) Bash(orca status*) Bash(printf *) Bash(mkdir *) Bash(git rev-parse *) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *) Bash(git add *) Bash(git commit *) Bash(git remote *) Bash(git rev-list *) Read Glob Grep
 ---
 
 # /work-task — 작업 하나 끝까지 진행
@@ -34,7 +34,7 @@ mkdir -p "<공용 git 폴더>/dev-pipeline" && printf '%s\n' "<YYYY-MM-DD HH:MM>
 
 1. 인자에서 작업 번호를 읽는다. 없으면 현재 브랜치명(`t<번호>-...`)에서 찾는다. 그래도 없으면 멈추고 작업 번호를 달라고 한다.
 2. 프로젝트 `CLAUDE.md` 를 읽는다. "기술 스택" 이 비어 있으면 카드 갱신(`in-progress`, "중단: 기술 스택 없음 — /init-pipeline 필요", `--unread`) 후 멈춘다.
-3. "파이프라인 설정" 에서 리뷰어(없으면 `both`), 리뷰 수정 횟수(없으면 2), 기준 브랜치(없으면 `main`)를 읽는다.
+3. "파이프라인 설정" 에서 리뷰어(없으면 `both`), 리뷰 수정 횟수(없으면 2), 기준 브랜치(없으면 `main`), 작업 브랜치 커밋(없으면 `자동`), push(없으면 `물어봄`)를 읽는다.
 4. `docs/tasks/T<번호>.md`(카드), `docs/tasks/checklist.md` 의 "T<번호>" 섹션(구현 체크리스트), `docs/tasks/plan.md` 의 "작업 간 공통 약속" 을 읽는다. 카드가 없으면 카드 갱신("중단: 작업 카드 없음", `--unread`) 후 멈춘다. 체크리스트 섹션이 없으면 경고하고 카드만으로 진행한다.
 5. 현재 브랜치가 카드의 브랜치와 다르면 경고만 하고 계속한다. 현재 브랜치가 기준 브랜치면 멈춘다 (기준 브랜치에서 직접 작업하지 않는다).
 6. 카드 갱신: `in-progress`, "T<번호> 구현 중". 진행 로그에는 "시작 (브랜치 <브랜치>, 체크리스트 <n>개 항목)" 도 남긴다.
@@ -92,7 +92,7 @@ Skill 도구로 `dev-pipeline:review-diff` 를 실행한다. 인자: `<리뷰어
 
 ## 결과 기록
 
-4·5단계 전에, 그리고 중단으로 끝날 때도 `docs/tasks/results/T<번호>.md` 를 Write 한다 (작업마다 다른 파일이라 동시에 돌아도 머지 충돌이 없다). 이 파일은 구현 변경과 함께 커밋된다.
+4·5단계 전에, 그리고 중단으로 끝날 때도 `docs/tasks/results/T<번호>.md` 를 Write 한다 (작업마다 다른 파일이라 동시에 돌아도 머지 충돌이 없다). 이 파일은 4.5단계에서 구현 변경과 함께 커밋된다.
 
 ```markdown
 # T<번호> 구현 결과
@@ -126,6 +126,38 @@ Skill 도구로 `dev-pipeline:review-diff` 를 실행한다. 인자: `<리뷰어
 
 카드 갱신: `in-review`, "리뷰 통과 · 블로커 0 · 테스트 통과 (리뷰어: <리뷰어>)", `--unread`. 미검증이면 "테스트 통과" 대신 "테스트 미검증".
 
+## 4.5단계 — 커밋
+
+4단계(통과)이고 빌드 · 테스트가 실제로 통과했을 때만 한다. 중단 · 블로커 남음이면 커밋하지 않는다. 테스트 미검증(명령을 실행하지 못함)이면 커밋하지 않고 보고에 "커밋 대기 — 테스트 미검증" 과 제안 메시지를 적는다 (빌드되는지 모르는 커밋을 남기지 않기 위해).
+
+- 설정 `작업 브랜치 커밋` 이 `사람` 이면 건너뛰고, 보고에 "커밋 대기 (사람)" 과 제안 메시지를 적는다.
+- `자동` 이면 커밋한다. 이 설정은 사람이 이 파이프라인에 작업 브랜치 커밋을 맡긴다는 지시다. 사용자 규칙에 "git 은 시킬 때만" 이 있어도 작업 브랜치 커밋은 이 설정으로 지시받은 것으로 본다. 그 밖의 git 상태 변경(push · merge · rebase · reset 등)은 여기에 포함되지 않는다.
+- **현재 브랜치가 기준 브랜치면 절대 커밋하지 않는다.**
+
+**커밋 규칙은 사용자마다 다르다.** 이 세션에 로드된 사용자 지시(전역 `~/.claude/CLAUDE.md`, 프로젝트 `CLAUDE.md`, `CLAUDE.local.md`)에 커밋 규칙이 있으면 **그 규칙을 그대로** 따른다 — 메시지 형식 · 언어 · 본문 내용 · 커밋을 나누는 기준 · 서명·공동 작성자 줄까지. 규칙에 "성격별로 나눠라" 가 있으면 이 작업의 변경을 그 기준으로 여러 커밋으로 나누고, 각 커밋이 그 자체로 빌드되는 순서로 둔다.
+
+사용자 규칙이 없을 때만 기본 규칙을 쓴다:
+
+- 제목: `<type>(<scope>): <요약>` — type 은 feat / fix / refactor / test / chore 중 하나, scope 는 작업 번호(`T2`)나 모듈 이름
+- 본문: 무엇을 왜 했는지, 근거(작업 카드 · 체크리스트 항목 ID, 테스트 결과 수치, 리뷰 판정)
+- 한 작업 = 한 커밋 (구현 · 테스트 · `docs/tasks/results/T<번호>.md` 포함)
+
+어느 규칙이든 지킨다:
+
+- 스테이징은 이 작업의 담당 파일 범위와 `docs/tasks/results/T<번호>.md` 만. `git add -A` 로 범위 밖 파일을 쓸어 담지 않는다. 범위 밖 변경이 보이면 커밋하지 않고 "사람 확인 필요" 로 처리한다.
+- 훅을 건너뛰지 않는다 (`--no-verify` 금지). 커밋 훅이 실패하면 고치지 말고 출력과 함께 "커밋 실패 — 사람 확인 필요" 로 보고한다.
+- 커밋 뒤 카드 갱신: `in-review`, "리뷰 통과 · 커밋 <짧은 해시> · push 대기", `--unread`.
+
+## 4.6단계 — push 확인
+
+**push 는 항상 사용자에게 묻는다.** 사용자 지시에 push 규칙이 있으면 그것도 따른다 (더 엄격한 쪽).
+
+- 설정 `push` 가 `안 함` 이면 묻지 않고, 보고에 push 명령만 적는다.
+- `물어봄` 이면 AskUserQuestion 으로 "T<번호> 브랜치(`<브랜치>`)를 원격(`<remote>`)에 push 할까요?" 를 묻는다 (push / 나중에). 원격이 없으면(`git remote` 가 비어 있음) 묻지 않고 그 사실을 보고한다.
+- 승인하면 `git push -u <remote> <브랜치>` 를 실행하고 결과를 보고한다. 기준 브랜치는 push 하지 않는다. `--force` 는 쓰지 않는다.
+- 비대화형이라 물을 수 없으면 push 하지 않고 보고에 명령을 적는다.
+- 진행 로그에 "커밋 <해시>" 와 "push 완료" 또는 "push 대기" 를 남긴다.
+
 ## 5단계 — 보고
 
 이 세션에 마지막으로 남기는 보고 (사람이 이 worktree 탭을 열었을 때 볼 내용):
@@ -133,16 +165,16 @@ Skill 도구로 `dev-pipeline:review-diff` 를 실행한다. 인자: `<리뷰어
 ```markdown
 ## T<번호> 결과: 통과 | 중단 | 블로커 남음
 
-- 브랜치: <브랜치> (기준: <기준>) · 커밋하지 않음
+- 브랜치: <브랜치> (기준: <기준>) · 커밋: <해시와 제목 | 커밋 대기 (사람) | 안 함 (중단)> · push: <완료 | 대기 | 안 함>
 - 바꾼 파일: <목록> — 모두 담당 범위 안 / 범위 밖 <목록>
 - 빌드·테스트: <명령과 결과>
 - 리뷰: <리뷰어>, <회차>회, 최종 블로커 <n> · 권장 <n> · 사소함 <n>
 - 남은 권장 사항: <목록 또는 없음>
-- 사람이 할 일: 변경 검수 → 커밋 → 머지 또는 PR (중단이면: <결정할 내용>)
+- 사람이 할 일: 변경 검수 → (push 안 했으면 push) → 머지 또는 PR (중단이면: <결정할 내용>)
 ```
 
 ## 하지 않는 것
 
 - 코드 직접 수정 (implementer 만 한다), `docs/` 수정 (`docs/tasks/results/T<번호>.md` 쓰기만 예외).
-- git add · commit · push · merge, PR 생성.
+- 4.5단계 밖의 커밋, 묻지 않은 push, merge · rebase · reset, PR 생성.
 - 다른 worktree 의 작업 건드리기.

@@ -2,7 +2,7 @@
 name: wave-status
 description: docs/tasks/ 의 작업들이 지금 어디까지 왔는지 한 표로 보여준다. 작업마다 웨이브, 브랜치, Orca 카드 상태·코멘트(구현 중 / 리뷰 통과 / 중단 / 블로커 남음), 머지 여부를 모으고 사람이 할 일과 다음 웨이브를 띄울 수 있는지 알려 준다.
 argument-hint: ""
-allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(git worktree list*) Bash(git rev-parse *) Bash(git branch *) Bash(git log *) Bash(git reflog *) Bash(git merge-base *) Bash(git -C * status *) Read Glob Grep
+allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(git worktree list*) Bash(git rev-parse *) Bash(git branch *) Bash(git log *) Bash(git reflog *) Bash(git merge-base *) Bash(git rev-list *) Bash(git -C * status *) Read Glob Grep
 ---
 
 # /wave-status — 웨이브 진행 상황
@@ -16,7 +16,8 @@ allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(g
 3. 작업마다 머지 여부를 `/dev-pipeline:run-wave` 1단계의 "머지 판정" 과 같은 방법으로 정한다. `git branch --merged` 만 보면 커밋이 없는 작업 브랜치가 머지됨으로 잘못 나온다: 생성 커밋(`git reflog show --format=%H <브랜치>` 마지막 줄)과 끝 커밋이 같으면 커밋 없음, 다르고 `git merge-base --is-ancestor <브랜치> <기준>` 이 성공하면 머지됨. 브랜치가 없는데 `git log <기준> --grep "T<번호>"` 에 흔적이 있으면 "머지된 것으로 보임".
 4. `orca status` 가 되면 `orca worktree list --repo path:<루트> --json` 으로 worktree 목록을 얻고, 브랜치(`refs/heads/<브랜치>`)로 작업과 맞춘다. 각 worktree 의 `path`, `workspaceStatus`, `comment` 를 쓴다. Orca 가 안 되면 `git worktree list` 로 worktree 경로만 얻고, Orca 카드 상태 없이 정리한 뒤 그 사실을 알린다.
 5. worktree 가 있는 작업은 `git -C <worktree 경로> status --short` 로 커밋 안 된 변경 파일 수를 센다.
-6. 진행 로그 `<공용 git 폴더>/dev-pipeline/progress.log` (`git rev-parse --path-format=absolute --git-common-dir`) 가 있으면 `tail -n 30` 으로 최근 줄을 읽는다.
+6. 작업 브랜치마다 커밋 수(생성 커밋 이후 `git rev-list --count <생성 커밋>..<브랜치>`)와 push 여부(`git rev-parse --abbrev-ref <브랜치>@{upstream}` 가 되면 `git rev-list --count <브랜치>@{upstream}..<브랜치>` 로 안 올린 커밋 수)를 구한다.
+7. 진행 로그 `<공용 git 폴더>/dev-pipeline/progress.log` (`git rev-parse --path-format=absolute --git-common-dir`) 가 있으면 `tail -n 30` 으로 최근 줄을 읽는다.
 
 ## 2단계 — 상태 판정
 
@@ -33,7 +34,7 @@ allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(g
 ```markdown
 ## 작업 진행 상황 (기준: <기준>)
 
-| 작업 | 제목 | 웨이브 | 상태 | Orca 코멘트 | 변경 파일 | 브랜치 |
+| 작업 | 제목 | 웨이브 | 상태 | Orca 코멘트 | 커밋 · push | 브랜치 |
 | --- | --- | --- | --- | --- | --- | --- |
 
 ### 최근 진행 (진행 로그)
@@ -42,7 +43,7 @@ allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(g
 실시간으로 보려면: `tail -f "<공용 git 폴더>/dev-pipeline/progress.log"` · Orca 앱 왼쪽 목록 → `<레포>` → 작업 이름
 
 ### 사람이 할 일
-- 검수 대기: T2 — `<worktree 경로>` 에서 변경 확인 → 커밋 → 머지 또는 PR
+- 검수 대기: T2 — `<worktree 경로>` 에서 변경 확인 → (push 대기면 push) → 머지 또는 PR
 - 사람 확인 필요: T3 — <코멘트>. 그 worktree 탭의 마지막 보고를 확인
 
 ### 다음 웨이브
