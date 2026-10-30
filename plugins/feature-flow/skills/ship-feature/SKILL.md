@@ -57,7 +57,7 @@ argument-hint: "[기능 설명]"
 ```bash
 git status -sb                  # 커밋 안 된 변경이 있으면 멈추고 묻는다 (남의 작업일 수 있다)
 gh auth status
-codex --version                 # 실패하면 리뷰를 건너뛰지 말고 멈춰서 보고한다
+codex --version                 # 실패하면 아래 "Codex 를 못 쓸 때" 대로 Claude 로 대신한다
 ```
 
 ## 1. 브랜치
@@ -121,6 +121,17 @@ codex exec -s read-only --ephemeral -c model_reasoning_effort="high" \
 
 두 결과를 합치고 중복을 뺀 뒤, **지적마다 코드를 직접 열어** 맞음 / 틀림 / 일부 맞음을 판단한다. 리뷰어 말을 그대로 믿지 않는다.
 
+### Codex 를 못 쓸 때 (설치 안 됨 · 사용 한도 · 오류)
+
+리뷰를 건너뛰거나 멈추지 않는다. **Codex 자리를 Claude 리뷰어 Agent 하나로 대신**해 두 리뷰어를 채운다.
+
+- 대신하는 Agent 는 원래 Claude 리뷰어와 **따로** 띄우고, 같은 지시문에 관점을 하나 더 준다:
+  "다른 리뷰어가 이미 본다고 가정하고, 경계값 · 실패 경로 · 보안 · 기존 동작 회귀를 특히 깊게 본다."
+- 확인 리뷰(9)에서 Codex 를 못 쓰면 Claude 리뷰어 Agent 하나로 같은 범위를 본다.
+- 리뷰 본문 첫 줄의 리뷰어 칸에 사실대로 적는다: 전수는 `Claude + Claude(Codex 대신: <이유>)`, 확인은 `Claude(Codex 대신: <이유>)`.
+  리뷰 요약 코멘트 표의 리뷰어 칸도 같다.
+- Codex 가 이유 없이 오래 멈춘 경우(10분 넘게 출력 없음)는 아래 "함정" 을 먼저 확인하고, 고칠 수 없으면 대신한다.
+
 ## 7. GitHub PR 리뷰로 게시 (회차당 1건)
 
 일반 코멘트가 아니라 PR Review 로 남긴다. 같은 계정이면 Approve · Request changes 를 못 하므로 `event: COMMENT`.
@@ -151,7 +162,7 @@ gh api repos/<owner>/<repo>/pulls/<번호>/reviews --input <임시 폴더>/revie
 
 ## 9. 확인 리뷰 (1번)
 
-Codex 로 한 번 더 보되 범위를 **"6 의 지적이 제대로 고쳐졌는지 · 고치면서 새로 깨진 것이 있는지"** 로 좁힌다. 새 개선 제안은 받지 않는다.
+Codex 로(못 쓰면 6 의 "Codex 를 못 쓸 때" 대로 Claude 로) 한 번 더 보되 범위를 **"6 의 지적이 제대로 고쳐졌는지 · 고치면서 새로 깨진 것이 있는지"** 로 좁힌다. 새 개선 제안은 받지 않는다.
 결과는 7 과 같은 형식(2차, 리뷰어 `Codex`)으로 게시한다.
 
 - 맞는 "꼭 고칠 것" 은 고친다. "고치면 좋은 것" · "사소함" 은 몇 줄로 끝나는 것만 고치고 나머지는 PR 에 이유를 적고 넘긴다.
@@ -221,6 +232,7 @@ grep -nE 'sb_secret_|sb_publishable_|sbp_|gh[pousr]_[A-Za-z0-9]|eyJhbGci|sk-[A-Z
 | 증상 | 원인 · 대처 |
 | --- | --- |
 | Codex 가 10분 넘게 출력 없음 | stdin 대기. 지시문을 `- < 파일` 로 넘기지 않았다 |
+| Codex 가 "usage limit" 으로 끝남 | 사용 한도. 기다리지 말고 "Codex 를 못 쓸 때" 대로 Claude 로 대신한다 |
 | Codex 가 "지적 사항을 보내 주세요" 같은 답만 함 | 지시문이 첫 줄에서 잘렸다 (Windows 인자 따옴표). `- < 파일` 로 넘긴다 |
 | 커밋 메시지가 여러 인자로 쪼개짐 | PowerShell 따옴표. `git commit -F <파일>` |
 | 커밋 메시지 맨 앞에 깨진 문자 | BOM. Bash heredoc 이나 BOM 없는 UTF-8 로 쓴다 |

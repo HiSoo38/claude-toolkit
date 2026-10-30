@@ -62,7 +62,7 @@ claude plugin install feature-flow@claude-toolkit
 ## 필요한 것
 
 - [GitHub CLI](https://cli.github.com/) (`gh auth login` 완료)
-- [Codex CLI](https://github.com/openai/codex) (`codex --version` 이 되어야 함. 없으면 리뷰 단계에서 멈춥니다)
+- [Codex CLI](https://github.com/openai/codex) (권장. 없거나 사용 한도에 걸리면 그 자리를 Claude 리뷰어가 대신합니다)
 
 환경변수 · 비밀값은 필요 없습니다.
 
