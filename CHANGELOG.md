@@ -3,6 +3,12 @@
 레포 전체 변경 이력. 형식과 작성 규칙은 [ADDING.md](./ADDING.md#7-버전-올리기와-changelog) 참고.
 날짜 내림차순. 항목 앞의 `[플러그인]` 은 영향받는 플러그인, `[repo]` 는 레포 공통.
 
+## 2026-10-30
+
+### 추가
+
+- [feature-flow] 0.1.0 — 새 플러그인. `/feature-flow:ship-feature` 가 기능 하나를 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → 전수 리뷰(Codex + Claude 동시) → GitHub PR Review 게시 → 한 번에 수정 → 확인 리뷰(Codex) → develop 머지 → develop→main PR 까지 진행한다. 리뷰는 PR 하나당 전수 1번 + 확인 1번. 프로젝트 `CLAUDE.md` 의 `## 작업 흐름 설정` 으로 통합 · 배포 브랜치, 계획서 위치, 검증 명령, develop 머지 여부(자동 · 사람)를 바꾼다
+
 ## 2026-10-27
 
 ### 변경
