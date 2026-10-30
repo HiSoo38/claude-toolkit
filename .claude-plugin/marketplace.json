@@ -12,6 +12,13 @@
       "description": "계약 문서 → 작업 분할 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex)의 멀티 에이전트 개발 파이프라인",
       "category": "development",
       "tags": ["workflow", "multi-agent", "worktree", "review"]
+    },
+    {
+      "name": "feature-flow",
+      "source": "./plugins/feature-flow",
+      "description": "기능 하나를 계획서 · 체크리스트 → 성격별 커밋 → PR → Codex + Claude 전수 리뷰 → GitHub PR 리뷰 게시 → 수정 · 확인 리뷰 → develop 머지까지 진행하는 단일 에이전트 작업 흐름",
+      "category": "development",
+      "tags": ["workflow", "git-flow", "code-review", "codex"]
     }
   ]
 }
