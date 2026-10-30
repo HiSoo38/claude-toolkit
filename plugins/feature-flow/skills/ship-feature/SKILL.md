@@ -108,11 +108,13 @@ PR 전체(`git diff origin/<통합>...HEAD`, 커밋 전부 합친 변경)를 한
 **Codex 와 Claude 리뷰어(Agent)를 동시에 따로** 돌려 서로 놓친 것을 잡게 한다. 지시문은 [review-prompt.md](review-prompt.md).
 
 ```bash
+# 지시문을 저장소 밖 임시 파일에 쓰고, 마지막 인자 `-` 로 표준 입력에서 읽게 한다.
 codex exec -s read-only --ephemeral -c model_reasoning_effort="high" \
-  -o <저장소 밖 임시 폴더>/codex-review-pr<번호>-r1.md "<리뷰 지시>" < /dev/null
+  -o <저장소 밖 임시 폴더>/codex-review-pr<번호>-r1.md - < <임시 폴더>/review-prompt.txt
 ```
 
-- `< /dev/null` 필수. 안 닫으면 "Reading additional input from stdin" 에서 멈춘다.
+- 지시문을 `"$(cat 파일)"` 처럼 인자로 넘기지 않는다. Windows 는 지시문 안의 큰따옴표에서 인자를 잘라 Codex 가 첫 줄만 받는다.
+- 표준 입력을 열어 두면 "Reading additional input from stdin" 에서 멈춘다. `- < 파일` 이 지시문을 넘기면서 입력도 닫는다.
 - `codex review --base` 는 지시문과 함께 못 쓴다(`--base` 와 PROMPT 가 배타적). `codex exec` 를 쓴다.
 - 오래 걸리므로 백그라운드로 돌리고, 그동안 Claude 리뷰어 Agent(`general-purpose`, 읽기 전용 지시)를 띄운다.
 - 결과 파일은 **저장소 밖**(세션 임시 폴더)에만 만든다.
@@ -200,7 +202,8 @@ grep -nE 'sb_secret_|sb_publishable_|sbp_|gh[pousr]_[A-Za-z0-9]|eyJhbGci|sk-[A-Z
 
 | 증상 | 원인 · 대처 |
 | --- | --- |
-| Codex 가 10분 넘게 출력 없음 | stdin 대기. `< /dev/null` 빠짐 |
+| Codex 가 10분 넘게 출력 없음 | stdin 대기. 지시문을 `- < 파일` 로 넘기지 않았다 |
+| Codex 가 "지적 사항을 보내 주세요" 같은 답만 함 | 지시문이 첫 줄에서 잘렸다 (Windows 인자 따옴표). `- < 파일` 로 넘긴다 |
 | 커밋 메시지가 여러 인자로 쪼개짐 | PowerShell 따옴표. `git commit -F <파일>` |
 | 커밋 메시지 맨 앞에 깨진 문자 | BOM. Bash heredoc 이나 BOM 없는 UTF-8 로 쓴다 |
 | 리뷰가 커밋별로 달린 것처럼 보임 | 일반 코멘트를 썼다. PR Review 로 한 건에 모은다 |

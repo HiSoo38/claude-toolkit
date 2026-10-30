@@ -1,7 +1,7 @@
 {
   "name": "feature-flow",
   "displayName": "Feature Flow",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "기능 하나를 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → 전수 리뷰(Codex + Claude) → GitHub PR 리뷰 게시 → 한 번에 수정 → 확인 리뷰 → develop 머지 → develop→main PR 까지 진행하는 단일 에이전트 작업 흐름",
   "author": {
     "name": "HiSoo38",

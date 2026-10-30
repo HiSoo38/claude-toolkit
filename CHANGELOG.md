@@ -5,6 +5,10 @@
 
 ## 2026-10-30
 
+### 수정
+
+- [feature-flow] 0.1.1 — Codex 리뷰 지시문을 `- < 파일` 로 표준 입력에 넘긴다. 인자로 넘기면 Windows 에서 지시문 안 큰따옴표에서 잘려 Codex 가 첫 줄만 받았다
+
 ### 추가
 
 - [feature-flow] 0.1.0 — 새 플러그인. `/feature-flow:ship-feature` 가 기능 하나를 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → 전수 리뷰(Codex + Claude 동시) → GitHub PR Review 게시 → 한 번에 수정 → 확인 리뷰(Codex) → develop 머지 → develop→main PR 까지 진행한다. 리뷰는 PR 하나당 전수 1번 + 확인 1번. 프로젝트 `CLAUDE.md` 의 `## 작업 흐름 설정` 으로 통합 · 배포 브랜치, 계획서 위치, 검증 명령, develop 머지 여부(자동 · 사람)를 바꾼다

@@ -58,7 +58,7 @@ claude plugin marketplace remove claude-toolkit      # 마켓플레이스 제거
 | 이름 | 설명 | 종류 | 버전 | 문서 |
 | --- | --- | --- | --- | --- |
 | `dev-pipeline` | 계약 문서 확정 → 작업 분할 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex). 스택 자동 감지 | skill · agent · hook | 0.3.0 | [README](./plugins/dev-pipeline/README.md) |
-| `feature-flow` | `/feature-flow:ship-feature "<기능>"` 하나로 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → Codex + Claude 전수 리뷰 · GitHub PR 리뷰 게시 → 수정 · 확인 리뷰 → develop 머지 → develop→main PR. main 머지는 사람이 | skill | 0.1.0 | [README](./plugins/feature-flow/README.md) |
+| `feature-flow` | `/feature-flow:ship-feature "<기능>"` 하나로 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → Codex + Claude 전수 리뷰 · GitHub PR 리뷰 게시 → 수정 · 확인 리뷰 → develop 머지 → develop→main PR. main 머지는 사람이 | skill | 0.1.1 | [README](./plugins/feature-flow/README.md) |
 
 ## 레포 구조
 
