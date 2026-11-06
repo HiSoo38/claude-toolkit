@@ -1,0 +1,221 @@
+{
+  "description": "han-pipeline 실행 중에만 동작: 사람만 하는 명령(배포 브랜치 머지·push, force push, DB 적용·직접 쿼리, 운영 배포)을 막고, 커밋·PR 생성 전에 han.mjs check 통과를 확인한다. git·gh·DB·배포 명령일 때만 프로세스가 뜬다.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "Bash(git commit*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(git push*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(git merge*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(gh pr*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(supabase*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(npx supabase*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(psql*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(mysql*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(sqlcmd*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(mongosh*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(flyway*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(prisma*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(npx prisma*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(drizzle-kit*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(npx drizzle-kit*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(vercel*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "Bash(npx vercel*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          }
+        ]
+      },
+      {
+        "matcher": "PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "if": "PowerShell(git commit*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(git push*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(git merge*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(gh pr*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(supabase*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(npx supabase*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(psql*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(mysql*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(sqlcmd*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(mongosh*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(flyway*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(prisma*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(npx prisma*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(drizzle-kit*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(npx drizzle-kit*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(vercel*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "if": "PowerShell(npx vercel*)",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/guard.mjs\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

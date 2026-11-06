@@ -7,6 +7,13 @@
   },
   "plugins": [
     {
+      "name": "han-pipeline",
+      "source": "./plugins/han-pipeline",
+      "description": "개발 요청 하나를 현황 파악 → 구조 설계(코드 분리) → 테스트 먼저 구현 → 검사 관문 → 화면 자동 테스트 → 리뷰(Codex · Claude) → 머지까지 진행하는 개발 파이프라인. 여러 기능은 worktree 로 동시에, 입력 문서 우선, PC 자원에 맞춰 돈다",
+      "category": "development",
+      "tags": ["workflow", "pipeline", "review", "testing", "worktree"]
+    },
+    {
       "name": "dev-pipeline",
       "source": "./plugins/dev-pipeline",
       "description": "계약 문서 → 작업 분할 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex)의 멀티 에이전트 개발 파이프라인",
