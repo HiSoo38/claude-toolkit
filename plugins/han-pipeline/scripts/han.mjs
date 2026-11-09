@@ -33,6 +33,8 @@ const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts|vue|svelte)$/;
 const SKIP_SECRET_SCAN = /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|\.env\.example)$/;
 const SECRET_PATTERN =
   /sb_secret_|sb_publishable_|sbp_|gh[pousr]_[A-Za-z0-9]|eyJhbGci|sk-[A-Za-z0-9]{10}|AKIA[0-9A-Z]{16}|[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[a-z]{2,}|01[016789]-?[0-9]{3,4}-?[0-9]{4}/;
+// 줄 세우지 않는 명령: 원격에서 계산하는 Codex (run 이 PC 전체 잠금 없이 바로 돌린다)
+const LIGHT_REMOTE = /^\s*codex\s/;
 const EMAIL_ALLOWED = /noreply|no-reply|example\.(com|org)|@anthropic\.com/;
 // 무거운 검사 전에 필요한 남은 메모리(MB). check() 가 자원 예산으로 다시 정한다.
 let minFreeMB = 1024;
@@ -82,9 +84,12 @@ function run(args) {
   const budget = measureBudget(readSettings(root)["자원 등급"]);
   minFreeMB = budget.minFreeMB;
   lowerPriority();
+  const exec = () => spawnSync(command, { cwd, shell: true, stdio: "inherit", env: heapEnv(budget.heapMB) });
+  // Codex 는 계산을 원격에서 해 이 PC 메모리를 거의 쓰지 않는다. 다른 세션의 검사 뒤에 줄 서지 않고 바로 돈다.
+  if (LIGHT_REMOTE.test(command)) process.exit(exec().status ?? 1);
   const r = withHeavyLock(command.slice(0, 60), () => {
     waitForMemory("명령");
-    return spawnSync(command, { cwd, shell: true, stdio: "inherit", env: heapEnv(budget.heapMB) });
+    return exec();
   });
   process.exit(r.status ?? 1);
 }
