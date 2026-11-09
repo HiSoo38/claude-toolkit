@@ -1,5 +1,7 @@
 // 여러 기능을 동시에 진행할 때 쓰는 명령 (han.mjs worktree · stamp).
-//   worktree add <이름> [--fix] [--base <브랜치>]  저장소 밖 <저장소>.worktrees/<이름> 에 기능 브랜치 작업 폴더를 만든다
+//   worktree add <이름> [--fix] [--base <브랜치>] [--branch <브랜치 이름>] [--launch --prompt-file <파일>]
+//                                                   저장소 밖 <저장소>.worktrees/<이름> 에 기능 브랜치 작업 폴더를 만든다.
+//                                                   --launch: Orca 가 켜져 있으면 그 작업공간에 Claude 를 띄운다
 //   worktree list                                   만든 작업 폴더와 브랜치 · 바뀐 파일 수
 //   worktree remove <이름>                           작업 폴더를 지운다 (바뀐 파일이 있으면 지우지 않는다)
 //   stamp                                           DB 마이그레이션 파일 이름에 쓸 시각
@@ -18,7 +20,9 @@ export function worktreeCommand(root, args) {
   if (sub === "add") return add(main, rest);
   if (sub === "list") return list(main);
   if (sub === "remove") return remove(main, rest);
-  fail("사용법: node han.mjs worktree add <이름> [--fix] [--base <브랜치>] | list | remove <이름>");
+  fail(
+    "사용법: node han.mjs worktree add <이름> [--fix] [--base <브랜치>] [--branch <브랜치 이름>] [--launch --prompt-file <파일>] | list | remove <이름>",
+  );
 }
 
 // 작업 폴더는 저장소 밖 옆 폴더에 둔다. 저장소 안에 두면 타입 검사 · 린트가 다른 기능의 파일까지 읽는다.
@@ -26,13 +30,25 @@ function worktreesDir(main) {
   return join(dirname(main), `${basename(main)}.worktrees`);
 }
 
+// 값을 받는 옵션 — 그 다음 칸은 작업 이름이 아니다.
+const VALUE_FLAGS = new Set(["--base", "--branch", "--prompt-file"]);
+
+function flagValue(args, flag) {
+  const i = args.indexOf(flag);
+  return i >= 0 ? args[i + 1] : undefined;
+}
+
 function add(main, args) {
-  const name = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1] !== "--base");
+  const name = args.find((a, i) => !a.startsWith("--") && !VALUE_FLAGS.has(args[i - 1]));
   if (!name || !NAME.test(name)) fail("이름은 kebab-case 영어로 (예: tasks-calendar).");
   const settings = readSettings(main);
-  const baseArg = args.indexOf("--base");
-  const base = baseArg >= 0 ? args[baseArg + 1] : settings["통합 브랜치"];
-  const branch = `${args.includes("--fix") ? "fix" : "feature"}/${name}`;
+  const base = flagValue(args, "--base") ?? settings["통합 브랜치"];
+  // 브랜치 이름 규칙이 프로젝트마다 달라(feat/… · feature/…) 직접 줄 수 있게 한다. 없으면 feature/<이름> · fix/<이름>.
+  const branch = flagValue(args, "--branch") ?? `${args.includes("--fix") ? "fix" : "feature"}/${name}`;
+  const promptFile = flagValue(args, "--prompt-file");
+  if (args.includes("--launch") && (!promptFile || !existsSync(promptFile))) {
+    fail("--launch 에는 --prompt-file <지시문 파일> 이 필요합니다 (작업 폴더를 만들기 전에 확인).");
+  }
   const path = join(worktreesDir(main), name);
   if (existsSync(path)) fail(`이미 있습니다: ${path} — 이어서 하려면 그 폴더에서 계속하세요.`);
 
@@ -55,6 +71,57 @@ function add(main, args) {
     });
     if (r.status !== 0) console.log(`⚠️ 준비 명령 실패 — 그 폴더에서 다시 실행하세요:\n${`${r.stdout || ""}${r.stderr || ""}`.trim().slice(-800)}`);
   }
+
+  if (args.includes("--launch")) launchInOrca(path, readFileSync(promptFile, "utf8").trim());
+}
+
+// Orca 명령줄 도구 위치 — 환경변수 ORCA_BIN, PATH, 기본 설치 위치 순.
+function findOrca() {
+  if (process.env.ORCA_BIN && existsSync(process.env.ORCA_BIN)) return process.env.ORCA_BIN;
+  const which = spawnSync(process.platform === "win32" ? "where" : "which", ["orca"], { encoding: "utf8" });
+  const found = which.status === 0 ? which.stdout.split(/\r?\n/).find(Boolean)?.trim() : undefined;
+  if (found && existsSync(found)) return found;
+  const candidates =
+    process.platform === "win32"
+      ? [join(process.env.LOCALAPPDATA ?? "", "Programs", "orca", "resources", "bin", "orca.exe")]
+      : ["/Applications/Orca.app/Contents/Resources/bin/orca"];
+  return candidates.find((c) => existsSync(c));
+}
+
+// Orca(작업공간마다 에이전트를 띄워 보여 주는 데스크톱 앱)가 켜져 있으면 이 작업 폴더의 작업공간에 Claude 를 띄운다.
+// 사용자가 진행을 화면에서 보고 중간에 답할 수 있다. 결과는 `launch:` 한 줄로 남긴다 —
+//   launch: orca …      띄웠다. 지휘 세션은 그 세션이 끝나며 보내는 메시지를 기다린다.
+//   launch: fallback …  못 띄웠다(Orca 없음 · 꺼짐 · 실패). 지휘 세션이 자기 안의 하위 에이전트로 대신한다.
+// 실행 응답을 못 받았어도 다시 띄우지 않는다 — 같은 작업공간에 Claude 가 둘 생긴다(Orca 안내: 새로 띄워 재시도하지 말 것).
+function launchInOrca(path, prompt) {
+  const orca = findOrca();
+  if (!orca) return console.log("launch: fallback (Orca 를 찾지 못함)");
+
+  const status = spawnSync(orca, ["status", "--json"], { encoding: "utf8", timeout: 20000 });
+  let reachable = false;
+  try {
+    reachable = JSON.parse(status.stdout).result?.runtime?.reachable === true;
+  } catch {
+    // 응답이 JSON 이 아니면 꺼진 것으로 본다
+  }
+  if (!reachable) return console.log("launch: fallback (Orca 가 꺼져 있거나 응답이 없음)");
+
+  const worktree = `path:${path.replace(/\\/g, "/")}`;
+  const r = spawnSync(orca, ["agent", "launch", "--agent", "claude", "--worktree", worktree, "--prompt", prompt, "--focus"], {
+    encoding: "utf8",
+    timeout: 120000,
+  });
+  const out = `${r.stdout || ""}${r.stderr || ""}`.trim();
+  if (r.status !== 0) {
+    const retry = out.match(/--retry-launch\s+(\S+)/)?.[1];
+    return console.log(
+      retry
+        ? `launch: unknown (응답을 못 받음 — Orca 화면에서 그 작업공간을 확인. 같은 폴더에서 다시 하려면 --retry-launch ${retry})`
+        : `launch: fallback (Orca 실행 실패: ${out.slice(-300)})`,
+    );
+  }
+  console.log(`launch: orca (${worktree})`);
+  console.log(out);
 }
 
 // 원래 폴더의 node_modules 를 링크(Windows 는 junction)로 연결한다.
