@@ -76,10 +76,14 @@ function add(main, args) {
 }
 
 // Orca 명령줄 도구 위치 — 환경변수 ORCA_BIN, PATH, 기본 설치 위치 순.
+// Windows 의 `where orca` 는 orca.cmd 를 orca.exe 보다 먼저 돌려준다. spawnSync 는 .cmd · .bat 을 셸 없이
+// 실행하지 못하므로(EINVAL) Windows 에서는 .exe 만 고른다.
 function findOrca() {
   if (process.env.ORCA_BIN && existsSync(process.env.ORCA_BIN)) return process.env.ORCA_BIN;
-  const which = spawnSync(process.platform === "win32" ? "where" : "which", ["orca"], { encoding: "utf8" });
-  const found = which.status === 0 ? which.stdout.split(/\r?\n/).find(Boolean)?.trim() : undefined;
+  const win = process.platform === "win32";
+  const which = spawnSync(win ? "where" : "which", ["orca"], { encoding: "utf8" });
+  const lines = which.status === 0 ? which.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
+  const found = win ? lines.find((l) => l.toLowerCase().endsWith(".exe")) : lines[0];
   if (found && existsSync(found)) return found;
   const candidates =
     process.platform === "win32"
