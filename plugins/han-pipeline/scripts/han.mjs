@@ -129,13 +129,20 @@ function start() {
 }
 
 // 지금 커밋 안 된 변경 · 새 파일 목록.
+// git() 은 출력 앞뒤 공백을 지워, 첫 줄 맨 앞의 상태 칸(" M")이 한 글자 줄고 첫 파일 이름이 잘린다.
+// 그래서 여기서는 출력을 그대로 받는다. -z 는 경로를 따옴표 없이 NUL 로 나누고, 이름 바꾸기는 "XY 새이름\0옛이름" 이다.
 function dirtyFiles() {
-  const r = git(["status", "--porcelain", "-uall"], root);
-  if (!r.ok) return [];
-  return r.out
-    .split("\n")
-    .filter(Boolean)
-    .map((l) => l.slice(3).replace(/^.* -> /, "").replace(/^"|"$/g, ""));
+  const r = spawnSync("git", ["status", "--porcelain", "-z", "-uall"], { cwd: root, encoding: "utf8" });
+  if (r.status !== 0) return [];
+  const parts = (r.stdout || "").split("\0");
+  const files = [];
+  for (let i = 0; i < parts.length; i++) {
+    const entry = parts[i];
+    if (entry.length < 4) continue;
+    files.push(entry.slice(3));
+    if (entry[0] === "R" || entry[0] === "C") i++;
+  }
+  return files;
 }
 
 function readActive() {

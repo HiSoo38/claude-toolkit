@@ -1,7 +1,7 @@
 {
   "name": "han-pipeline",
   "displayName": "Han Pipeline",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "개발 요청 하나를 현황 파악 → 구조 설계(코드 분리) → 계획 → 테스트 먼저 구현 → 자동 검사 관문 → 화면 자동 테스트 → 리뷰(Codex · Claude) → 머지까지 진행하는 개발 파이프라인. 새 프로젝트 · 진행 중 프로젝트 모두, 사용자가 가져온 요구사항 · DB 설계를 그대로 기준으로 쓰고, PC 메모리를 재서 다른 작업을 방해하지 않게 돈다.",
   "author": {
     "name": "HiSoo38",
