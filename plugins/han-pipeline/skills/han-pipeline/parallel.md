@@ -42,6 +42,7 @@ han.mjs worktree add <기능-이름> [--branch <브랜치 이름>] --launch --pr
 지시문을 먼저 쓴다(아래 틀). 2 단계 `--launch --prompt-file` 로 넘기면 Orca 작업공간에 뜬다.
 
 - `launch: orca` — 그 작업공간의 Claude 가 끝까지 한다. 이 세션은 그 세션이 보내는 결과 메시지를 기다린다. 사용자가 그 작업공간에서 직접 지시해도 된다.
+- `launch: unknown` — 띄웠는지 모른다(응답 유실 · 시간 초과). 하위 에이전트로 다시 띄우지 않는다. 사용자에게 Orca 화면에서 그 작업공간을 확인해 달라고 하고, Claude 가 떠 있으면 `orca` 와 같이 기다린다.
 - `launch: fallback` — 지시문을 그대로 이 세션의 하위 에이전트로 띄운다. 줄마다 하나씩, **한 메시지에 여러 Agent 호출**로 동시에 (`subagent_type: general-purpose`, `run_in_background: true`).
 
 지시문 (`<지휘 세션 이름>` 은 ListAgents 의 "This session is …" 이름):

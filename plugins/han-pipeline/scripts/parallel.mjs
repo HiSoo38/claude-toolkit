@@ -98,7 +98,8 @@ function findOrca() {
 // Orca(작업공간마다 에이전트를 띄워 보여 주는 데스크톱 앱)가 켜져 있으면 이 작업 폴더의 작업공간에 Claude 를 띄운다.
 // 사용자가 진행을 화면에서 보고 중간에 답할 수 있다. 결과는 `launch:` 한 줄로 남긴다 —
 //   launch: orca …      띄웠다. 지휘 세션은 그 세션이 끝나며 보내는 메시지를 기다린다.
-//   launch: fallback …  못 띄웠다(Orca 없음 · 꺼짐 · 실패). 지휘 세션이 자기 안의 하위 에이전트로 대신한다.
+//   launch: fallback …  못 띄웠다(Orca 없음 · 꺼짐 · 실행 불가 · 거절). 지휘 세션이 자기 안의 하위 에이전트로 대신한다.
+//   launch: unknown …   띄웠는지 모른다(응답 유실 · 시간 초과 · 강제 종료). Orca 화면에서 그 작업공간을 사람이 확인한다.
 // 실행 응답을 못 받았어도 다시 띄우지 않는다 — 같은 작업공간에 Claude 가 둘 생긴다(Orca 안내: 새로 띄워 재시도하지 말 것).
 function launchInOrca(path, prompt) {
   const orca = findOrca();
@@ -134,7 +135,7 @@ function launchInOrca(path, prompt) {
     // 같은 작업 폴더에 Claude 가 둘 생기므로 unknown 으로 낸다.
     if (r.error?.code === "ETIMEDOUT" || r.signal) {
       return console.log(
-        `launch: unknown (응답 시간 초과 — Orca 화면에서 그 작업공간을 확인하고, 없을 때만 다시 띄운다)`,
+        `launch: unknown (${r.error?.code === "ETIMEDOUT" ? "응답 시간 초과" : `강제 종료 ${r.signal}`} — Orca 화면에서 그 작업공간을 확인. 다시 띄우지 않는다)`,
       );
     }
     // 여기부터는 실행이 시작되지 않았거나(EINVAL · ENOENT · ENAMETOOLONG 등) Orca 가 거절한 경우라 다시 띄워도 겹치지 않는다
