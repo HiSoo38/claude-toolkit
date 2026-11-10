@@ -2,7 +2,8 @@
 // Claude Code PreToolUse 훅 (Bash · PowerShell). han-pipeline 실행 표시가 켜진 저장소에서만 동작한다.
 // hooks.json 의 `if` 필터로 git · gh · DB · 배포 명령일 때만 이 프로세스가 뜬다 (평소 명령에는 실행되지 않는다).
 //  1) 사람만 하는 명령을 막는다: 배포 브랜치 머지 · push, force push, DB 적용 · 직접 쿼리, 운영 배포 · 비밀값 변경
-//  2) 커밋 · PR 생성 전에 `han.mjs check` 가 통과했고 그 뒤 파일이 안 바뀌었는지 확인한다
+//  2) 통합 · 배포 브랜치에 바로 커밋 · push 하는 것을 막는다 (두 브랜치에는 PR 머지로만 들어간다)
+//  3) 커밋 · PR 생성 전에 `han.mjs check` 가 통과했고 그 뒤 파일이 안 바뀌었는지 확인한다
 // 실행 표시가 없거나 저장소 밖이면 아무것도 하지 않는다. 사용자가 터미널에서 직접 치는 명령(`!` 포함)에는 걸리지 않는다.
 
 import { spawnSync } from "node:child_process";
@@ -38,6 +39,7 @@ function main(event) {
   const { root, gitDir } = found;
   const reason =
     humanOnlyReason(command, root, gitDir, active.settings) ||
+    sharedBranchReason(command, gitDir, active.settings) ||
     checkGateReason(command, root, join(gitDir, "han-pipeline"));
   if (reason) deny(reason);
 }
@@ -70,6 +72,23 @@ function humanOnlyReason(command, root, gitDir, settings) {
   return null;
 }
 
+// 통합 · 배포 브랜치에 바로 커밋 · push 하면 그 이유를 돌려준다. 두 브랜치에는 PR 머지로만 변경이 들어간다.
+// 배포 브랜치 push 는 humanOnlyReason 이 먼저 막으므로 여기서는 커밋과 통합 브랜치 push 를 본다.
+function sharedBranchReason(command, gitDir, settings) {
+  const shared = [settings["통합 브랜치"], settings["배포 브랜치"]].filter(Boolean);
+  const branch = branchFromHead(gitDir);
+  if (shared.includes(branch) && /\bgit\s+commit\b/.test(command)) {
+    return `BRANCH:${branch} 브랜치에서는 커밋하지 않습니다.`;
+  }
+  const integ = settings["통합 브랜치"];
+  if (!integ) return null;
+  const pushToInteg = new RegExp(`\\bgit\\s+push\\b[^;&|\\n]*[\\s:]${escapeRegex(integ)}(\\s|$)`);
+  if (pushToInteg.test(command) || (branch === integ && /\bgit\s+push\b/.test(command))) {
+    return `BRANCH:${integ} 브랜치에 바로 push 하지 않습니다.`;
+  }
+  return null;
+}
+
 function prBase(command, root) {
   const num = command.match(/\bgh\s+pr\s+merge\s+(\d+)/)?.[1];
   const args = ["pr", "view", ...(num ? [num] : []), "--json", "baseRefName", "-q", ".baseRefName"];
@@ -96,7 +115,9 @@ function checkGateReason(command, root, dir) {
 function deny(reason) {
   const message = reason.startsWith("GATE:")
     ? `[han-pipeline 검사 관문] ${reason.slice(5)}`
-    : `[han-pipeline] '${reason}' 은(는) 사람이 직접 하는 작업입니다. 실행하지 말고, 사용자에게 실행할 명령과 이유를 적어 보여 준 뒤 멈추세요.`;
+    : reason.startsWith("BRANCH:")
+      ? `[han-pipeline 브랜치 규칙] ${reason.slice(7)} 작은 수정도 feature/ · fix/ · docs/ 브랜치(또는 작업 폴더)를 따서 커밋하고 PR 로 올리세요. 이미 커밋했으면 그 커밋을 새 브랜치로 옮기기 전에 사용자에게 알리세요.`
+      : `[han-pipeline] '${reason}' 은(는) 사람이 직접 하는 작업입니다. 실행하지 말고, 사용자에게 실행할 명령과 이유를 적어 보여 준 뒤 멈추세요.`;
   process.stdout.write(
     JSON.stringify({
       hookSpecificOutput: {
