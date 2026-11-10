@@ -77,18 +77,21 @@ function add(main, args) {
 
 // Orca 명령줄 도구 위치 — 환경변수 ORCA_BIN, PATH, 기본 설치 위치 순.
 // Windows 의 `where orca` 는 orca.cmd 를 orca.exe 보다 먼저 돌려준다. spawnSync 는 .cmd · .bat 을 셸 없이
-// 실행하지 못하므로(EINVAL) Windows 에서는 .exe 만 고른다.
+// 실행하지 못하므로(EINVAL) Windows 에서는 ORCA_BIN 도 PATH 결과도 .exe 만 쓴다.
 function findOrca() {
-  if (process.env.ORCA_BIN && existsSync(process.env.ORCA_BIN)) return process.env.ORCA_BIN;
   const win = process.platform === "win32";
+  const runnable = (p) => Boolean(p) && existsSync(p) && (!win || p.toLowerCase().endsWith(".exe"));
+  if (runnable(process.env.ORCA_BIN)) return process.env.ORCA_BIN;
   const which = spawnSync(win ? "where" : "which", ["orca"], { encoding: "utf8" });
   const lines = which.status === 0 ? which.stdout.split(/\r?\n/).map((l) => l.trim()).filter(Boolean) : [];
-  const found = win ? lines.find((l) => l.toLowerCase().endsWith(".exe")) : lines[0];
-  if (found && existsSync(found)) return found;
-  const candidates =
-    process.platform === "win32"
-      ? [join(process.env.LOCALAPPDATA ?? "", "Programs", "orca", "resources", "bin", "orca.exe")]
-      : ["/Applications/Orca.app/Contents/Resources/bin/orca"];
+  const found = lines.find(runnable);
+  if (found) return found;
+  // LOCALAPPDATA 가 없으면 기본 위치를 만들지 않는다 — 빈 값이면 현재 폴더 기준 상대경로가 된다.
+  const candidates = win
+    ? process.env.LOCALAPPDATA
+      ? [join(process.env.LOCALAPPDATA, "Programs", "orca", "resources", "bin", "orca.exe")]
+      : []
+    : ["/Applications/Orca.app/Contents/Resources/bin/orca"];
   return candidates.find((c) => existsSync(c));
 }
 
@@ -102,6 +105,10 @@ function launchInOrca(path, prompt) {
   if (!orca) return console.log("launch: fallback (Orca 를 찾지 못함)");
 
   const status = spawnSync(orca, ["status", "--json"], { encoding: "utf8", timeout: 20000 });
+  // 실행 자체를 못 했으면(EINVAL · ENOENT 등) '꺼짐' 과 섞지 않고 원인 코드를 남긴다
+  if (status.error && status.error.code !== "ETIMEDOUT") {
+    return console.log(`launch: fallback (Orca 실행 불가: ${status.error.code} — ${orca})`);
+  }
   let reachable = false;
   try {
     reachable = JSON.parse(status.stdout).result?.runtime?.reachable === true;
@@ -118,11 +125,21 @@ function launchInOrca(path, prompt) {
   const out = `${r.stdout || ""}${r.stderr || ""}`.trim();
   if (r.status !== 0) {
     const retry = out.match(/--retry-launch\s+(\S+)/)?.[1];
-    return console.log(
-      retry
-        ? `launch: unknown (응답을 못 받음 — Orca 화면에서 그 작업공간을 확인. 같은 폴더에서 다시 하려면 --retry-launch ${retry})`
-        : `launch: fallback (Orca 실행 실패: ${out.slice(-300)})`,
-    );
+    if (retry) {
+      return console.log(
+        `launch: unknown (응답을 못 받음 — Orca 화면에서 그 작업공간을 확인. 같은 폴더에서 다시 하려면 --retry-launch ${retry})`,
+      );
+    }
+    // 시간 초과 · 신호로 끊긴 경우는 Orca 가 요청을 이미 받았을 수 있다 — fallback 으로 하위 에이전트를 또 띄우면
+    // 같은 작업 폴더에 Claude 가 둘 생기므로 unknown 으로 낸다.
+    if (r.error?.code === "ETIMEDOUT" || r.signal) {
+      return console.log(
+        `launch: unknown (응답 시간 초과 — Orca 화면에서 그 작업공간을 확인하고, 없을 때만 다시 띄운다)`,
+      );
+    }
+    // 여기부터는 실행이 시작되지 않았거나(EINVAL · ENOENT · ENAMETOOLONG 등) Orca 가 거절한 경우라 다시 띄워도 겹치지 않는다
+    const cause = r.error ? `${r.error.code} ` : "";
+    return console.log(`launch: fallback (Orca 실행 실패: ${cause}${out.slice(-300)})`);
   }
   console.log(`launch: orca (${worktree})`);
   console.log(out);
