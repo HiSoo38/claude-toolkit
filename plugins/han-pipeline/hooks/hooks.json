@@ -1,5 +1,5 @@
 {
-  "description": "han-pipeline 실행 중에만 동작: 사람만 하는 명령(배포 브랜치 머지·push, force push, DB 적용·직접 쿼리, 운영 배포)을 막고, 커밋·PR 생성 전에 han.mjs check 통과를 확인한다. git·gh·DB·배포 명령일 때만 프로세스가 뜬다.",
+  "description": "han-pipeline 실행 중에만 동작: 사람만 하는 명령(배포 브랜치 머지·push, force push, DB 적용·직접 쿼리, 운영 배포)과 통합·배포 브랜치에 바로 하는 커밋·통합 브랜치 push 를 막고, 커밋·PR 생성 전에 han.mjs check 통과를 확인한다. git·gh·DB·배포 명령일 때만 프로세스가 뜬다.",
   "hooks": {
     "PreToolUse": [
       {
