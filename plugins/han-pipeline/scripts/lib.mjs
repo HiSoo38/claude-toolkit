@@ -136,21 +136,47 @@ function readJson(p) {
   }
 }
 
-// 설정 명령을 `&&` 로 나눈 조각 중 바뀐 코드가 있는 곳의 것만 남긴다. 조각 앞에 `[경로,경로]` 를 붙이면
-// 그 경로 아래 파일이 바뀌었을 때만 돈다(모노레포에서 웹만 고쳤는데 관리자 타입 검사까지 돌지 않게).
-// 표시가 없는 조각은 늘 돈다. 남은 조각이 없으면 빈 문자열(= 건너뜀).
+// 설정 명령(타입 검사)을 경로 표시 `[경로,경로]` 로 나눠, 바뀐 코드가 있는 쪽의 명령만 남긴다
+// (모노레포에서 웹만 고쳤는데 관리자 타입 검사까지 돌지 않게).
+// - 명령의 맨 앞이나 `&&` 바로 뒤에 오는 `[...]` 가 표시다. 표시 하나는 다음 표시 앞까지를 모두 덮으므로
+//   `[apps/web] cd apps/web && npx tsc` 처럼 `&&` 가 든 명령도 한 덩어리로 다룬다.
+// - 첫 표시 앞에 표시 없는 명령이 있으면 그것은 늘 돈다. 남은 명령이 없으면 빈 문자열(= 건너뜀).
+// - 명령 맨 앞의 `[ ... ]` 는 쉘 테스트(`[ -f x ]`)가 아니라 경로 표시로 읽는다.
+// - 경로는 저장소 루트 기준이고 `\` · 앞의 `./` · 끝의 `/` 는 무시한다.
 //   예: [apps/web,packages] npx tsc -p web.json && [apps/admin,packages] npx tsc -p admin.json
 export function scopeByPath(template, codeFiles) {
-  if (!template || !template.includes("[")) return template;
-  const parts = template.split("&&").map((p) => p.trim()).filter(Boolean);
-  const kept = parts.flatMap((part) => {
-    const m = part.match(/^\[([^\]]*)\]\s*(.*)$/);
-    if (!m) return [part];
-    const prefixes = m[1].split(",").map((x) => x.trim().replace(/\/+$/, "")).filter(Boolean);
-    const hit = codeFiles.some((f) => prefixes.some((p) => f === p || f.startsWith(p + "/")));
-    return hit ? [m[2]] : [];
+  const kept = splitPathMarks(template).flatMap(({ paths, command }) => {
+    if (!paths) return [command];
+    const hit = codeFiles.some((f) => paths.some((p) => f === p || f.startsWith(p + "/")));
+    return hit ? [command] : [];
   });
   return kept.join(" && ");
+}
+
+// 설정 명령에 적힌 경로 표시의 경로 전부 (정규화한 값). 없는 경로를 잡아내는 데 쓴다.
+export function pathMarks(template) {
+  return splitPathMarks(template).flatMap((part) => part.paths ?? []);
+}
+
+// 명령을 [{ paths: 표시의 경로 목록 또는 null(표시 없음), command }] 로 나눈다.
+function splitPathMarks(template) {
+  if (!template) return [];
+  const marks = [...template.matchAll(/(^|&&)\s*\[([^\]]*)\]/g)];
+  if (marks.length === 0) return [{ paths: null, command: template.trim() }];
+  const parts = [];
+  const lead = template.slice(0, marks[0].index).trim();
+  if (lead) parts.push({ paths: null, command: lead });
+  marks.forEach((m, i) => {
+    const start = m.index + m[0].length;
+    const end = i + 1 < marks.length ? marks[i + 1].index : template.length;
+    const command = template.slice(start, end).trim();
+    const paths = m[2]
+      .split(",")
+      .map((x) => x.trim().replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, ""))
+      .filter(Boolean);
+    if (command) parts.push({ paths, command });
+  });
+  return parts;
 }
 
 // 이번 작업에서 바뀐 파일 목록. 기능 브랜치면 통합 브랜치와 갈라진 지점부터, 아니면 HEAD 부터.
