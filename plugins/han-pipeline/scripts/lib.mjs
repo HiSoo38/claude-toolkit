@@ -136,6 +136,23 @@ function readJson(p) {
   }
 }
 
+// 설정 명령을 `&&` 로 나눈 조각 중 바뀐 코드가 있는 곳의 것만 남긴다. 조각 앞에 `[경로,경로]` 를 붙이면
+// 그 경로 아래 파일이 바뀌었을 때만 돈다(모노레포에서 웹만 고쳤는데 관리자 타입 검사까지 돌지 않게).
+// 표시가 없는 조각은 늘 돈다. 남은 조각이 없으면 빈 문자열(= 건너뜀).
+//   예: [apps/web,packages] npx tsc -p web.json && [apps/admin,packages] npx tsc -p admin.json
+export function scopeByPath(template, codeFiles) {
+  if (!template || !template.includes("[")) return template;
+  const parts = template.split("&&").map((p) => p.trim()).filter(Boolean);
+  const kept = parts.flatMap((part) => {
+    const m = part.match(/^\[([^\]]*)\]\s*(.*)$/);
+    if (!m) return [part];
+    const prefixes = m[1].split(",").map((x) => x.trim().replace(/\/+$/, "")).filter(Boolean);
+    const hit = codeFiles.some((f) => prefixes.some((p) => f === p || f.startsWith(p + "/")));
+    return hit ? [m[2]] : [];
+  });
+  return kept.join(" && ");
+}
+
 // 이번 작업에서 바뀐 파일 목록. 기능 브랜치면 통합 브랜치와 갈라진 지점부터, 아니면 HEAD 부터.
 // 커밋된 변경 · 커밋 안 된 변경 · 새 파일을 모두 넣고, 지운 파일은 뺀다.
 export function changedFiles(root, settings) {

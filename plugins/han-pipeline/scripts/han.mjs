@@ -15,6 +15,7 @@ import { constants, setPriority } from "node:os";
 import { join } from "node:path";
 import {
   changedFiles,
+  scopeByPath,
   ensureDir,
   freeMB,
   git,
@@ -199,7 +200,12 @@ function check() {
     console.log(`(시작 전부터 바뀌어 있던 파일 ${changed.files.length - files.length}개는 뺌)`);
   }
 
-  steps.push(runCommand("타입 검사", s["타입 검사"], code.length > 0, []));
+  const typeCheck = scopeByPath(s["타입 검사"], code);
+  steps.push(
+    s["타입 검사"] && !typeCheck
+      ? { name: "타입 검사", status: "skip", note: "바뀐 경로에 해당하는 검사 없음 (설정의 [경로] 표시)" }
+      : runCommand("타입 검사", typeCheck, code.length > 0, []),
+  );
   steps.push(runCommand("린트", s["린트"], code.length > 0, code));
   steps.push(runCommand("테스트", s["테스트"], code.length > 0, code));
   const lengthExempt = new Set(s["파일 길이 예외"].split(",").map((f) => f.trim()).filter(Boolean));
