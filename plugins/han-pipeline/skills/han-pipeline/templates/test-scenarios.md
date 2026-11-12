@@ -20,7 +20,7 @@
 
 <details><summary>참고</summary>
 
-- 계획서: ./plan.md · 체크리스트: ./checklist.md · PR: <링크>
+- 계획서(체크리스트 포함): ./plan.md · PR: <링크>
 - 요구사항: <1. ID · 2. ID>
 - 자동 테스트: <1. 테스트 파일 · 이름> · <2. …>
 

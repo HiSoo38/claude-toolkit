@@ -15,6 +15,8 @@ import { constants, setPriority } from "node:os";
 import { join } from "node:path";
 import {
   changedFiles,
+  pathMarks,
+  scopeByPath,
   ensureDir,
   freeMB,
   git,
@@ -199,7 +201,7 @@ function check() {
     console.log(`(시작 전부터 바뀌어 있던 파일 ${changed.files.length - files.length}개는 뺌)`);
   }
 
-  steps.push(runCommand("타입 검사", s["타입 검사"], code.length > 0, []));
+  steps.push(typeCheckStep(s["타입 검사"], code));
   steps.push(runCommand("린트", s["린트"], code.length > 0, code));
   steps.push(runCommand("테스트", s["테스트"], code.length > 0, code));
   const lengthExempt = new Set(s["파일 길이 예외"].split(",").map((f) => f.trim()).filter(Boolean));
@@ -218,6 +220,22 @@ function check() {
   }
   console.log(`\n결과: ${ok ? "통과" : "실패"} (.git/han-pipeline/check.json)`);
   process.exit(ok ? 0 : 1);
+}
+
+// 타입 검사 — 설정의 경로 표시([경로])대로 바뀐 앱의 명령만 돌린다. 표시의 경로가 저장소에 없으면
+// (오타 · 옮긴 폴더) 조용히 건너뛰지 않고 실패로 알린다.
+function typeCheckStep(template, code) {
+  const name = "타입 검사";
+  const missing = pathMarks(template).filter((p) => !existsSync(join(root, p)));
+  if (missing.length > 0) {
+    return { name, status: "fail", note: `설정 [경로] 표시에 없는 경로: ${missing.join(", ")}` };
+  }
+  if (code.length === 0) return { name, status: "skip", note: "바뀐 코드 파일 없음" };
+  const command = scopeByPath(template, code);
+  if (template && !command) {
+    return { name, status: "skip", note: "바뀐 경로에 해당하는 검사 없음 (설정의 [경로] 표시)" };
+  }
+  return runCommand(name, command, code.length > 0, []);
 }
 
 // 설정의 명령을 한 번 실행한다. {files} 는 바뀐 코드 파일 목록으로 바꾼다.
