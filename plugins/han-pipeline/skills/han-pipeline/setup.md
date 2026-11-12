@@ -20,6 +20,8 @@
 - 계획서 위치: docs/plans
 - 공용 디렉터리: src/components, src/lib, src/hooks
 - 타입 검사: npx tsc --noEmit
+                                # 모노레포면 앱마다 [경로] 표시: [apps/web,packages] npx tsc -p apps/web/tsconfig.json && [apps/admin,packages] npx tsc -p apps/admin/tsconfig.json
+                                #   표시 하나는 다음 표시 앞까지를 덮는다. 그 경로 아래 코드가 바뀌었을 때만 돈다. 표시 없는 명령은 늘 돈다. 없는 경로를 적으면 검사가 실패한다
 - 린트: npx eslint {files}
 - 테스트: npx vitest related {files} --run --maxWorkers=1 --passWithNoTests
 - 파일 길이 한도: 400
