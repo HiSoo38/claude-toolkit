@@ -230,8 +230,9 @@ function typeCheckStep(template, code) {
   if (missing.length > 0) {
     return { name, status: "fail", note: `설정 [경로] 표시에 없는 경로: ${missing.join(", ")}` };
   }
+  if (code.length === 0) return { name, status: "skip", note: "바뀐 코드 파일 없음" };
   const command = scopeByPath(template, code);
-  if (template && code.length > 0 && !command) {
+  if (template && !command) {
     return { name, status: "skip", note: "바뀐 경로에 해당하는 검사 없음 (설정의 [경로] 표시)" };
   }
   return runCommand(name, command, code.length > 0, []);

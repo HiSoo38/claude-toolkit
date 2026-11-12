@@ -37,8 +37,8 @@ test("표시 하나가 다음 표시 앞까지 덮는다 — cd · 따옴표 안
 });
 
 test("경로 표기를 맞춘다 — \\ · 앞의 ./ · 끝의 /", () => {
-  const t = "[.\\apps\\web\\, ./packages/] tsc web";
-  assert.deepEqual(pathMarks(t), ["apps/web", "packages"]);
+  const t = "[.\\apps\\web\\, ./packages/, /lib] tsc web";
+  assert.deepEqual(pathMarks(t), ["apps/web", "packages", "lib"]);
   assert.equal(scopeByPath(t, ["apps/web/a.ts"]), "tsc web");
 });
 

@@ -141,8 +141,9 @@ function readJson(p) {
 // - 명령의 맨 앞이나 `&&` 바로 뒤에 오는 `[...]` 가 표시다. 표시 하나는 다음 표시 앞까지를 모두 덮으므로
 //   `[apps/web] cd apps/web && npx tsc` 처럼 `&&` 가 든 명령도 한 덩어리로 다룬다.
 // - 첫 표시 앞에 표시 없는 명령이 있으면 그것은 늘 돈다. 남은 명령이 없으면 빈 문자열(= 건너뜀).
-// - 명령 맨 앞의 `[ ... ]` 는 쉘 테스트(`[ -f x ]`)가 아니라 경로 표시로 읽는다.
-// - 경로는 저장소 루트 기준이고 `\` · 앞의 `./` · 끝의 `/` 는 무시한다.
+// - 명령 맨 앞이나 `&&` 바로 뒤의 `[ ... ]` 는 쉘 테스트(`[ -f x ]`)가 아니라 경로 표시로 읽는다(따옴표 안도 같다).
+//   쉘 테스트가 필요하면 `test -f x` 로 쓴다.
+// - 경로는 저장소 루트 기준이고 `\` · 앞의 `./` · `/` · 끝의 `/` 는 무시한다.
 //   예: [apps/web,packages] npx tsc -p web.json && [apps/admin,packages] npx tsc -p admin.json
 export function scopeByPath(template, codeFiles) {
   const kept = splitPathMarks(template).flatMap(({ paths, command }) => {
@@ -172,7 +173,7 @@ function splitPathMarks(template) {
     const command = template.slice(start, end).trim();
     const paths = m[2]
       .split(",")
-      .map((x) => x.trim().replace(/\\/g, "/").replace(/^\.\//, "").replace(/\/+$/, ""))
+      .map((x) => x.trim().replace(/\\/g, "/").replace(/^\.?\/+/, "").replace(/\/+$/, ""))
       .filter(Boolean);
     if (command) parts.push({ paths, command });
   });
