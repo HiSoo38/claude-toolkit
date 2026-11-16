@@ -1,8 +1,8 @@
 {
   "name": "dev-pipeline",
   "displayName": "Dev Pipeline",
-  "version": "0.3.0",
-  "description": "계약 문서(requirements → schema → api-spec)를 먼저 확정하고, 작업을 웨이브로 나눠 Orca worktree 에서 여러 에이전트가 동시에 구현 · 리뷰(Claude · Codex)까지 끝내는 멀티 에이전트 개발 파이프라인",
+  "version": "0.4.0",
+  "description": "요구사항 하나로 계약 문서(기존 코드 반영) → 계획 · 계획 리뷰 → Orca worktree 에서 여러 에이전트가 동시에 구현 · 리뷰(Claude · Codex) → 머지까지 이어서 하는 멀티 에이전트 개발 파이프라인. 새 · 기존 프로젝트, 끊기면 이어하기",
   "author": {
     "name": "HiSoo38",
     "url": "https://github.com/HiSoo38"

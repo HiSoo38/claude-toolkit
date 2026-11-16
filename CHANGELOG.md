@@ -37,6 +37,17 @@
 
 - [feature-flow] 0.1.0 — 새 플러그인. `/feature-flow:ship-feature` 가 기능 하나를 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → 전수 리뷰(Codex + Claude 동시) → GitHub PR Review 게시 → 한 번에 수정 → 확인 리뷰(Codex) → develop 머지 → develop→main PR 까지 진행한다. 리뷰는 PR 하나당 전수 1번 + 확인 1번. 프로젝트 `CLAUDE.md` 의 `## 작업 흐름 설정` 으로 통합 · 배포 브랜치, 계획서 위치, 검증 명령, develop 머지 여부(자동 · 사람)를 바꾼다
 
+## 2026-10-28
+
+### 변경
+
+- [dev-pipeline] 0.4.0 — 새 커맨드 `/build "<요구사항>"`: 준비 → 계약 문서 → 계획 · 계획 리뷰 → 사람 확인 한 번 → 문서 커밋 · Orca 레포 등록 → 웨이브 동시 구현 → 웨이브 사이 로컬 머지 → 다음 웨이브 → push 확인까지 한 번에 진행한다. 인자 없이 실행하면 끝난 단계를 건너뛰고 이어간다
+- [dev-pipeline] 0.4.0 — 이미 구현된 프로젝트 지원. planner · db-designer · api-designer 에 "기존 코드 반영 모드" — 라우트 · 마이그레이션 · ORM 모델 · 컨트롤러에서 지금 기능 · 스키마 · API 를 "기존" 으로 옮기고 이번 요구는 "신규" / "변경" 으로 더한다. `/plan-tasks` 는 "기존" 기능을 계획하지 않고 고칠 기존 파일을 담당 범위에 넣는다. 계획 리뷰는 "기존" 기능을 배정 대상으로 보지 않는다
+- [dev-pipeline] 0.4.0 — 미정 사항은 `- [ ] 질문 — 기본안: <값>` 으로 남겨 멈추지 않고 진행한다
+- [dev-pipeline] 0.4.0 — 이어하기. `/work-task` 0단계가 커밋 · 결과 기록 · 작업 중 변경을 보고 끝난 단계를 건너뛴다. `/run-wave` · `/wave-status` 가 출력이 15분 넘게 없는 작업을 "멈춤" 으로 보고, `/run-wave` 는 그 탭에 `/work-task` 를 다시 보내 이어서 시작시킨다. 새 스크립트 `scripts/wait_wave.py` 가 웨이브가 끝나거나 멈출 때까지 Orca 카드를 확인한다
+- [dev-pipeline] 0.4.0 — `/init-pipeline` 이 기준 브랜치를 실제 레포에서 정하고(`origin/HEAD` → `main` · `master` · `develop` → 현재 브랜치), 공용 코드 위치 · 코딩 컨벤션을 기존 코드에서 채운다. `/run-wave` · `/work-task` 에 `--no-push`
+- [dev-pipeline] 0.4.0 — `/run-wave` 의 Orca 실행 확인을 실제 JSON 필드(`result.runtime.reachable`)로 고침
+
 ## 2026-10-27
 
 ### 변경
