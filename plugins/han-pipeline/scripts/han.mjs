@@ -194,19 +194,24 @@ function check() {
   const skip = new Set(readActive()?.preexisting ?? []);
   const changed = changedFiles(root, s);
   const base = changed.base;
-  const files = changed.files.filter((f) => !skip.has(f));
+  const full = process.argv.includes("--full") || (s["빠른 테스트"] || "끔").trim() === "끔";
+  const fingerprint = treeFingerprint(root);
+  const all = changed.files.filter((f) => !skip.has(f));
+  // 가벼운 검사는 마지막으로 통과한 검사 뒤에 바뀐 파일만 다시 본다. 그 앞의 파일은 이미 통과했다.
+  const since = full ? null : sinceLastPass(fingerprint);
+  const files = since ? all.filter((f) => since.has(f)) : all;
   const code = files.filter((f) => CODE_EXT.test(f) && !f.endsWith(".d.ts"));
   const steps = [];
 
   console.log(`기준: ${base.slice(0, 8)} · 바뀐 파일 ${files.length}개 (코드 ${code.length}개)`);
-  if (changed.files.length !== files.length) {
-    console.log(`(시작 전부터 바뀌어 있던 파일 ${changed.files.length - files.length}개는 뺌)`);
+  if (changed.files.length !== all.length) {
+    console.log(`(시작 전부터 바뀌어 있던 파일 ${changed.files.length - all.length}개는 뺌)`);
   }
+  if (since) console.log(`(마지막 통과 뒤 바뀐 파일만 — 이번 작업 전체 ${all.length}개 중 ${files.length}개)`);
 
   // 커밋 관문은 가벼운 테스트(설정 "빠른 테스트")로, PR 직전은 `check --full` 로 관련 테스트까지 넓게 돈다.
   // 공용 부품 하나를 고쳐도 그걸 쓰는 화면 테스트 수십 개가 매 커밋 돌아 메모리가 바닥나던 것을 막는다.
   const quick = (s["빠른 테스트"] || "끔").trim();
-  const full = process.argv.includes("--full") || quick === "끔";
   console.log(full ? "테스트: 넓게(테스트)" : "테스트: 가볍게(빠른 테스트) — PR 직전에는 check --full");
 
   steps.push(typeCheckStep(s["타입 검사"], code));
@@ -219,7 +224,7 @@ function check() {
   steps.push(checkSecrets(files, base));
 
   const ok = steps.every((st) => st.status !== "fail");
-  const result = { ok, full, fingerprint: treeFingerprint(root), at: new Date().toISOString(), base, steps };
+  const result = { ok, full, fingerprint, at: new Date().toISOString(), base, steps };
   ensureDir(dir);
   writeFileSync(join(dir, "check.json"), JSON.stringify(result, null, 2));
 
@@ -366,6 +371,15 @@ function waitForMemory(name) {
     memoryWaitGaveUp = true;
     console.log(`⚠️ ${name}: 메모리가 여전히 부족합니다 (${freeMB()}MB). 낮은 우선순위로 진행합니다. 다른 프로그램을 닫으면 빨라집니다.`);
   }
+}
+
+// 마지막으로 통과한 검사의 파일 상태(tree 해시)와 지금 사이에 바뀐 파일. 통과 기록이 없거나 그 tree 를
+// 더는 읽을 수 없으면 null — 그때는 이번 작업 전체를 본다.
+function sinceLastPass(fingerprint) {
+  const last = readCheck();
+  if (!last?.ok || !last.fingerprint || !fingerprint) return null;
+  const d = git(["diff", "--name-only", "--diff-filter=d", last.fingerprint, fingerprint], root);
+  return d.ok ? new Set(d.out.split("\n").filter(Boolean)) : null;
 }
 
 function readCheck() {
