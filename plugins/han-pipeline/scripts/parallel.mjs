@@ -93,10 +93,13 @@ function add(main, args) {
   // 이 세션이 직접 그 폴더에서 일한다 — 실행 표시는 작업 폴더마다 따로라(.git/worktrees/<이름>/han-pipeline),
   // 그 폴더에서 start 를 해야 커밋 · PR 관문과 브랜치 보호 훅이 그 폴더에서 걸린다.
   console.log("\n> 작업 폴더에서 han.mjs start");
-  spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "han.mjs"), "start"], {
+  const started = spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "han.mjs"), "start"], {
     cwd: path,
     stdio: "inherit",
   });
+  if (started.status !== 0) {
+    console.log("\n⚠️ 작업 폴더에서 start 가 실패했습니다 — 이대로면 그 폴더에서 관문 훅이 걸리지 않습니다. 그 폴더에서 han.mjs start 를 다시 실행하세요.");
+  }
   console.log(`\n이제 이 폴더에서 일한다: cd "${path.replace(/\\/g, "/")}"`);
 }
 
