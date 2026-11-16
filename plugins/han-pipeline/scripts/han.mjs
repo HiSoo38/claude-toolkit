@@ -201,15 +201,21 @@ function check() {
     console.log(`(시작 전부터 바뀌어 있던 파일 ${changed.files.length - files.length}개는 뺌)`);
   }
 
+  // 커밋 관문은 가벼운 테스트(설정 "빠른 테스트")로, PR 직전은 `check --full` 로 관련 테스트까지 넓게 돈다.
+  // 공용 부품 하나를 고쳐도 그걸 쓰는 화면 테스트 수십 개가 매 커밋 돌아 메모리가 바닥나던 것을 막는다.
+  const full = process.argv.includes("--full") || !s["빠른 테스트"];
+  const testCommand = full ? s["테스트"] : s["빠른 테스트"];
+  console.log(full ? "테스트: 넓게(테스트)" : "테스트: 가볍게(빠른 테스트) — PR 직전에는 check --full");
+
   steps.push(typeCheckStep(s["타입 검사"], code));
   steps.push(runCommand("린트", s["린트"], code.length > 0, code));
-  steps.push(runCommand("테스트", s["테스트"], code.length > 0, code));
+  steps.push(runCommand("테스트", testCommand, code.length > 0, code));
   const lengthExempt = new Set(s["파일 길이 예외"].split(",").map((f) => f.trim()).filter(Boolean));
   steps.push(checkLength(code.filter((f) => !lengthExempt.has(f)), base, Number(s["파일 길이 한도"]) || 0));
   steps.push(checkSecrets(files, base));
 
   const ok = steps.every((st) => st.status !== "fail");
-  const result = { ok, fingerprint: treeFingerprint(root), at: new Date().toISOString(), base, steps };
+  const result = { ok, full, fingerprint: treeFingerprint(root), at: new Date().toISOString(), base, steps };
   ensureDir(dir);
   writeFileSync(join(dir, "check.json"), JSON.stringify(result, null, 2));
 
