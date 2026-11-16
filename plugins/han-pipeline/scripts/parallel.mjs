@@ -19,7 +19,8 @@ import {
   unlinkSync,
   writeFileSync,
 } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { acquireLock, commonGitDir, ensureDir, git, mainRoot, readSettings, withHeavyLock } from "./lib.mjs";
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -84,7 +85,19 @@ function add(main, args) {
     if (r.status !== 0) console.log(`⚠️ 준비 명령 실패 — 그 폴더에서 다시 실행하세요:\n${`${r.stdout || ""}${r.stderr || ""}`.trim().slice(-800)}`);
   }
 
-  if (args.includes("--launch")) launchInOrca(path, readFileSync(promptFile, "utf8").trim());
+  if (args.includes("--launch")) {
+    launchInOrca(path, readFileSync(promptFile, "utf8").trim());
+    return;
+  }
+
+  // 이 세션이 직접 그 폴더에서 일한다 — 실행 표시는 작업 폴더마다 따로라(.git/worktrees/<이름>/han-pipeline),
+  // 그 폴더에서 start 를 해야 커밋 · PR 관문과 브랜치 보호 훅이 그 폴더에서 걸린다.
+  console.log("\n> 작업 폴더에서 han.mjs start");
+  spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "han.mjs"), "start"], {
+    cwd: path,
+    stdio: "inherit",
+  });
+  console.log(`\n이제 이 폴더에서 일한다: cd "${path.replace(/\\/g, "/")}"`);
 }
 
 // Orca 명령줄 도구 위치 — 환경변수 ORCA_BIN, PATH, 기본 설치 위치 순.
@@ -203,13 +216,25 @@ export function linkNodeModules(main, path) {
     : "이미 있음";
 }
 
-/** 설정 "작업 폴더 복사" 의 git 무시 파일(로컬 설정 · 테스트 설정)을 원래 폴더에서 복사한다. */
+/**
+ * 설정 "작업 폴더 복사" 의 git 무시 파일(로컬 설정 · 테스트 설정)을 원래 폴더에서 복사한다. 저장소 밖 경로(`..` ·
+ * 절대 경로)와 git 이 무시하지 않는 파일은 복사하지 않는다 — 무시되지 않는 파일을 복사하면 작업 폴더에 새 파일로
+ * 잡혀 검사 · 민감 정보 검사 · 작업 폴더 지우기에 섞인다.
+ */
 export function copyIgnoredFiles(main, path, list) {
   const copied = [];
   for (const rel of list.split(",").map((f) => f.trim()).filter(Boolean)) {
+    if (isAbsolute(rel) || rel.split(/[\\/]/).includes("..")) {
+      console.log(`⚠️ 작업 폴더 복사: 저장소 안 상대 경로만 받는다 — 건너뜀: ${rel}`);
+      continue;
+    }
     const from = join(main, rel);
     const to = join(path, rel);
     if (!existsSync(from) || existsSync(to)) continue;
+    if (!git(["check-ignore", "-q", rel], main).ok) {
+      console.log(`⚠️ 작업 폴더 복사: git 이 무시하는 파일이 아니라 건너뜀 — ${rel}`);
+      continue;
+    }
     mkdirSync(dirname(to), { recursive: true });
     copyFileSync(from, to);
     copied.push(rel);
