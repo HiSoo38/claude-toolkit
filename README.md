@@ -58,7 +58,7 @@ claude plugin marketplace remove claude-toolkit      # 마켓플레이스 제거
 | 이름 | 설명 | 종류 | 버전 | 문서 |
 | --- | --- | --- | --- | --- |
 | `dev-pipeline` | `/dev-pipeline:build "<요구사항>"` 하나로 계약 문서(기존 코드 반영) → 계획 · 계획 리뷰 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex) → 머지. 새 · 기존 프로젝트, 스택 자동 감지, 끊기면 이어하기 | skill · agent · hook | 0.4.0 | [README](./plugins/dev-pipeline/README.md) |
-| `han-pipeline` | 개발 요청 하나를 이 세션에서 직접 고치기 → 바꾼 파일 테스트 → 기능 단위 커밋 → PR 하나 → 리뷰 → 이슈까지 한 번의 명령으로. 계획서 · 동시 진행은 필요할 때만, 무거운 검사는 PC 전체에서 한 번에 하나 | skill · agent · hook | 0.5.0 | [README](./plugins/han-pipeline/README.md) |
+| `han-pipeline` | 개발 요청 하나를 이 세션에서 직접 고치기 → 바꾼 파일 테스트 → 기능 단위 커밋 → PR 하나 → 리뷰 → 이슈까지 한 번의 명령으로. 계획서 · 동시 진행은 필요할 때만, 무거운 검사는 PC 전체에서 한 번에 하나 | skill · agent · hook | 0.6.0 | [README](./plugins/han-pipeline/README.md) |
 | `feature-flow` | `/feature-flow:ship-feature "<기능>"` 하나로 브랜치 → 계획서 · 체크리스트 → 성격별 커밋 → PR → Codex + Claude 전수 리뷰 · GitHub PR 리뷰 게시 → 수정 · 확인 리뷰 → develop 머지 → develop→main PR. main 머지는 사람이 | skill | 0.1.3 | [README](./plugins/feature-flow/README.md) |
 
 ## 레포 구조
