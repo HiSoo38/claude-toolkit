@@ -109,6 +109,10 @@ function checkGateReason(command, root, dir) {
   if (result.fingerprint !== treeFingerprint(root)) {
     return `GATE:검사 뒤에 파일이 바뀌었습니다. \`${SCRIPT} check\` 를 다시 실행하세요.`;
   }
+  // PR 은 넓은 테스트(관련 테스트까지)를 통과해야 만든다. 옛 결과(full 칸 없음)는 넓게 돈 것으로 본다.
+  if (/\bgh\s+pr\s+create\b/.test(command) && result.full === false) {
+    return `GATE:PR 전에는 관련 테스트까지 넓게 돌립니다. \`${SCRIPT} check --full\` 을 실행하세요.`;
+  }
   return null;
 }
 

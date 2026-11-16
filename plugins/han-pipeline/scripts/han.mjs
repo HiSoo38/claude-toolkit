@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 // han-pipeline 실행 도구.
 //   node han.mjs start [--resume]  실행 표시를 켜고 이 프로젝트에 적용되는 설정을 보여 준다 (guard 훅이 이 표시를 보고 관문을 연다)
-//   node han.mjs check   바뀐 파일 기준 검사를 하나씩 순서대로 돌리고 결과를 .git/han-pipeline/check.json 에 남긴다
+//   node han.mjs check [--full]   바뀐 파일 기준 검사를 하나씩 순서대로 돌리고 결과를 .git/han-pipeline/check.json 에 남긴다
+//                                  (기본은 빠른 테스트 — 커밋 관문용, --full 은 관련 테스트까지 — PR 관문용)
 //   node han.mjs run "<명령>"  무거운 명령(Codex · Playwright 등)을 메모리 확인 · 낮은 우선순위로 실행한다 (명령 전체를 따옴표 하나로)
 //   node han.mjs status  실행 표시와 마지막 검사 결과가 지금 파일과 맞는지 보여 준다
 //   node han.mjs stop    실행 표시를 끈다
@@ -30,6 +31,7 @@ import {
   withHeavyLock,
 } from "./lib.mjs";
 import { migrationStamp, worktreeCommand } from "./parallel.mjs";
+import { quickTestPlan } from "./quick-tests.mjs";
 
 const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|mts|cts|vue|svelte)$/;
 const SKIP_SECRET_SCAN = /(^|\/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock|\.env\.example)$/;
@@ -180,7 +182,7 @@ function status() {
   const result = readCheck();
   if (!result) return console.log("검사 결과: 없음");
   const fresh = result.fingerprint === treeFingerprint(root);
-  console.log(`검사 결과: ${result.ok ? "통과" : "실패"} · ${fresh ? "지금 파일과 같음" : "그 뒤 파일이 바뀜 — 다시 검사 필요"}`);
+  console.log(`검사 결과: ${result.ok ? "통과" : "실패"} · ${result.full === false ? "가볍게(빠른 테스트) — PR 전에는 check --full" : "넓게"} · ${fresh ? "지금 파일과 같음" : "그 뒤 파일이 바뀜 — 다시 검사 필요"}`);
 }
 
 function check() {
@@ -201,15 +203,23 @@ function check() {
     console.log(`(시작 전부터 바뀌어 있던 파일 ${changed.files.length - files.length}개는 뺌)`);
   }
 
+  // 커밋 관문은 가벼운 테스트(설정 "빠른 테스트")로, PR 직전은 `check --full` 로 관련 테스트까지 넓게 돈다.
+  // 공용 부품 하나를 고쳐도 그걸 쓰는 화면 테스트 수십 개가 매 커밋 돌아 메모리가 바닥나던 것을 막는다.
+  const quick = (s["빠른 테스트"] || "끔").trim();
+  const full = process.argv.includes("--full") || quick === "끔";
+  console.log(full ? "테스트: 넓게(테스트)" : "테스트: 가볍게(빠른 테스트) — PR 직전에는 check --full");
+
   steps.push(typeCheckStep(s["타입 검사"], code));
   steps.push(runCommand("린트", s["린트"], code.length > 0, code));
-  steps.push(runCommand("테스트", s["테스트"], code.length > 0, code));
+  if (full) steps.push(runCommand("테스트", s["테스트"], code.length > 0, code));
+  else if (quick === "자동") steps.push(quickTestStep(code));
+  else steps.push(runCommand("테스트", quick, code.length > 0, code));
   const lengthExempt = new Set(s["파일 길이 예외"].split(",").map((f) => f.trim()).filter(Boolean));
   steps.push(checkLength(code.filter((f) => !lengthExempt.has(f)), base, Number(s["파일 길이 한도"]) || 0));
   steps.push(checkSecrets(files, base));
 
   const ok = steps.every((st) => st.status !== "fail");
-  const result = { ok, fingerprint: treeFingerprint(root), at: new Date().toISOString(), base, steps };
+  const result = { ok, full, fingerprint: treeFingerprint(root), at: new Date().toISOString(), base, steps };
   ensureDir(dir);
   writeFileSync(join(dir, "check.json"), JSON.stringify(result, null, 2));
 
@@ -236,6 +246,31 @@ function typeCheckStep(template, code) {
     return { name, status: "skip", note: "바뀐 경로에 해당하는 검사 없음 (설정의 [경로] 표시)" };
   }
   return runCommand(name, command, code.length > 0, []);
+}
+
+// 「빠른 테스트: 자동」 — 바꾼 파일에 딸린 테스트만 패키지(앱) 폴더마다 돌린다(quick-tests.mjs).
+function quickTestStep(code) {
+  const name = "테스트";
+  if (code.length === 0) return { name, status: "skip", note: "바뀐 코드 파일 없음" };
+  const plan = quickTestPlan(root, code);
+  if (plan.length === 0) return { name, status: "skip", note: "바꾼 파일에 딸린 테스트 없음 (자동)" };
+  for (const p of plan) {
+    const r = withHeavyLock(`${name} (${root})`, () => {
+      waitForMemory(name);
+      console.log(`> ${name}(자동, ${p.cwd || "."}): ${p.command}`);
+      return spawnSync(p.command, {
+        cwd: join(root, p.cwd),
+        shell: true,
+        encoding: "utf8",
+        maxBuffer: 50 * 1024 * 1024,
+        env: checkEnv,
+      });
+    });
+    if (r.status !== 0) {
+      return { name, status: "fail", note: p.command, detail: tail(`${r.stdout || ""}${r.stderr || ""}`.trim(), 60) };
+    }
+  }
+  return { name, status: "pass", note: `자동 — 테스트 파일 ${plan.reduce((n, p) => n + p.files.length, 0)}개` };
 }
 
 // 설정의 명령을 한 번 실행한다. {files} 는 바뀐 코드 파일 목록으로 바꾼다.
@@ -279,7 +314,7 @@ function checkLength(code, base, limit) {
     name,
     status: "fail",
     note: `${over.length}개 파일이 한도를 넘어 커짐`,
-    detail: over.join("\n") + "\n→ 역할별로 나누거나, 나누지 않는 이유를 계획서 '구조 설계' 에 적고 사용자에게 알린다.",
+    detail: over.join("\n") + "\n→ 역할별로 나누거나, 나누지 않는 이유를 PR 본문(계획서를 썼으면 '구조 설계')에 적고 사용자에게 알린다.",
   };
 }
 
