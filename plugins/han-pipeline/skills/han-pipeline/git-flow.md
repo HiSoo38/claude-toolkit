@@ -19,11 +19,11 @@ git remote -v; git log -1 --oneline               # 원격 · 커밋이 있는�
 ## 1. 브랜치
 
 ```bash
-han.mjs worktree add <작업-이름> [--fix]      # 원래 폴더 브랜치는 그대로 두고 작업 폴더를 딴다
+han.mjs worktree add <작업-이름> [--fix] [--branch <프로젝트 규칙의 이름>]   # 작업 폴더를 따고 그 폴더에서 start 까지
 # 작업 폴더를 쓰지 않는 프로젝트면: git switch <통합> && git pull && git switch -c feature/<작업-이름>
 ```
 
-버그 수정이면 `fix/<내용>`, 문서만 고치면 `docs/<내용>`. 이름은 kebab-case 영어. 계획서는 [plan-mode.md](plan-mode.md) 로 썼을 때만 첫 커밋으로 올린다: `docs(plan): <작업> 계획서`.
+`--branch` 를 안 주면 `feature/<이름>`(`--fix` 면 `fix/<이름>`). 프로젝트 규칙이 다른 이름(예: `feat/…`)을 쓰면 `--branch` 로 준다. 문서만 고치면 `docs/<내용>`. 이름은 kebab-case 영어. 계획서는 [plan-mode.md](plan-mode.md) 로 썼을 때만 첫 커밋으로 올린다: `docs(plan): <작업> 계획서`.
 
 - **통합 · 배포 브랜치에서는 커밋하지 않는다.** 아무리 작은 수정도 이 단계처럼 브랜치를 먼저 따고, PR 로 올려 통합 브랜치에 머지한다. 통합 브랜치에서는 `pull` 과 브랜치 따기만 한다.
 - 커밋 직전에 `git branch --show-current` 가 통합 · 배포 브랜치면 멈추고 브랜치부터 딴다 (커밋 안 된 변경은 `git switch -c` 로 새 브랜치에 그대로 따라간다).
@@ -43,12 +43,12 @@ han.mjs worktree add <작업-이름> [--fix]      # 원래 폴더 브랜치는 �
 
 기능이 다 만들어졌을 때 한다. 서버 · 관리자 · 화면을 묶음별 PR 로 나눠 쌓지 않는다 (SKILL.md 원칙 "기능 하나 = PR 하나").
 
-순서: 통합 브랜치 병합 → (병렬 하위 작업이 아니면) 프로젝트 진행 문서(작업현황 등) 수정 · 커밋 → **`han.mjs check --full`**(관련 테스트까지 — 훅이 이것 없이는 PR 생성을 막는다) → push → PR. 진행 문서를 병합 **뒤에** 고쳐야 통합 쪽 변경과 바로 부딪히지 않는다. 병렬 하위 작업은 진행 문서를 고치지 않는다 ([parallel.md](parallel.md) 하위 작업 규칙).
+순서: 통합 브랜치 병합 → (병렬 하위 작업이 아니면) 프로젝트 진행 문서(작업현황 등) 수정 → **`han.mjs check --full`**(관련 테스트까지 — 훅이 이것 없이는 PR 생성을 막는다. 검사 결과는 파일 내용 기준이라 그 뒤 진행 문서를 커밋해도 다시 돌릴 필요 없다) → 진행 문서 커밋 → push → PR. 진행 문서를 병합 **뒤에** 고쳐야 통합 쪽 변경과 바로 부딪히지 않는다. 병렬 하위 작업은 진행 문서를 고치지 않는다 ([parallel.md](parallel.md) 하위 작업 규칙).
 
 ```bash
 git fetch origin && git merge origin/<통합>
 han.mjs check --full
-git push -u origin feature/<작업-이름>
+git push -u origin <브랜치>
 gh pr create --base <통합> --title "<type>: <요약>" --body-file <저장소 밖 임시 파일>
 ```
 
@@ -128,7 +128,11 @@ PR Review 는 커밋 사이에 끼고 고친 줄의 인라인 지적은 Outdated
 
 리뷰 id: `gh api repos/<owner>/<repo>/pulls/<번호>/reviews --jq '.[] | [.id, .body[:20]]'`.
 
-## 9. 통합 브랜치 머지
+## 9. 이슈
+
+리뷰 요약까지 단 뒤, 프로젝트 규칙의 이슈 절차(이슈 스킬 · 템플릿 · 라벨 · 보드)로 이 기능의 이슈를 하나 만든다 — 기능 하나 = 이슈 하나, 커밋 해시는 이슈 「참고」에. 규칙이 PR 본문 맨 위 `Closes #<번호>` 로 이슈를 닫게 하면 `gh pr edit <번호> --body-file <임시 파일>` 로 본문 맨 위에 더하고, `gh pr view <번호> --json closingIssuesReferences` 로 연결됐는지 확인한다. 프로젝트에 이슈 규칙이 없으면 건너뛰고 보고에 적는다.
+
+## 10. 통합 브랜치 머지
 
 마지막 리뷰(확인 리뷰, 건너뛰었으면 1차)에서 맞는 "꼭 고칠 것" 이 남지 않았고, 0 단계에서 머지를 맡았을 때만 (통합 브랜치가 배포 브랜치와 같으면 훅이 막는다 — 0 단계대로 멈춘다).
 
@@ -141,10 +145,13 @@ git fetch origin && git merge-base --is-ancestor origin/<통합> HEAD; echo $?
 - `2` 이상: git 오류. 멈추고 보고.
 
 ```bash
-gh pr merge <번호> --merge --delete-branch     # 나눈 커밋을 그대로 남기려고 merge commit 방식
+gh pr merge <번호> --merge                       # 나눈 커밋을 그대로 남기려고 merge commit 방식
+han.mjs worktree remove <작업-이름>               # 원래 폴더에서 — node_modules 연결을 먼저 끊고 작업 폴더 · 머지된 로컬 브랜치를 지운다
 ```
 
-## 10. 통합 → 배포 PR
+작업 폴더에 브랜치가 꺼내져 있으면 `--delete-branch` 가 로컬 브랜치를 못 지우므로 `worktree remove` 가 지운다. 작업 폴더를 손으로 지우지 않는다 — 연결을 따라가 원래 폴더 node_modules 까지 지울 수 있다.
+
+## 11. 통합 → 배포 PR
 
 열린 `<통합>` → `<배포>` PR 이 없으면 만들고(`release: <통합> → <배포>`), 있으면 본문의 포함 작업 목록만 갱신한다. 통합 브랜치가 배포 브랜치와 같으면 건너뛴다. **배포 브랜치 머지는 사람이 한다.**
 
