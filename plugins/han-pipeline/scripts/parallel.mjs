@@ -8,8 +8,19 @@
 // 작업 폴더는 원래 폴더의 node_modules 를 연결해 쓴다 (패키지를 다시 설치하지 않는다).
 
 import { spawnSync } from "node:child_process";
-import { existsSync, lstatSync, readFileSync, symlinkSync, unlinkSync, writeFileSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import {
+  copyFileSync,
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  readdirSync,
+  readFileSync,
+  symlinkSync,
+  unlinkSync,
+  writeFileSync,
+} from "node:fs";
+import { basename, dirname, isAbsolute, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { acquireLock, commonGitDir, ensureDir, git, mainRoot, readSettings, withHeavyLock } from "./lib.mjs";
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
@@ -62,6 +73,8 @@ function add(main, args) {
   console.log(`작업 폴더: ${path.replace(/\\/g, "/")}`);
   console.log(`브랜치: ${branch} (${from} 에서)`);
   console.log(`node_modules: ${linked}`);
+  const copied = copyIgnoredFiles(main, path, settings["작업 폴더 복사"]);
+  if (copied.length) console.log(`복사한 무시 파일: ${copied.join(", ")}`);
 
   const prepare = settings["워크트리 준비"];
   if (prepare) {
@@ -72,7 +85,19 @@ function add(main, args) {
     if (r.status !== 0) console.log(`⚠️ 준비 명령 실패 — 그 폴더에서 다시 실행하세요:\n${`${r.stdout || ""}${r.stderr || ""}`.trim().slice(-800)}`);
   }
 
-  if (args.includes("--launch")) launchInOrca(path, readFileSync(promptFile, "utf8").trim());
+  if (args.includes("--launch")) {
+    launchInOrca(path, readFileSync(promptFile, "utf8").trim());
+    return;
+  }
+
+  // 이 세션이 직접 그 폴더에서 일한다 — 실행 표시는 작업 폴더마다 따로라(.git/worktrees/<이름>/han-pipeline),
+  // 그 폴더에서 start 를 해야 커밋 · PR 관문과 브랜치 보호 훅이 그 폴더에서 걸린다.
+  console.log("\n> 작업 폴더에서 han.mjs start");
+  spawnSync(process.execPath, [join(dirname(fileURLToPath(import.meta.url)), "han.mjs"), "start"], {
+    cwd: path,
+    stdio: "inherit",
+  });
+  console.log(`\n이제 이 폴더에서 일한다: cd "${path.replace(/\\/g, "/")}"`);
 }
 
 // Orca 명령줄 도구 위치 — 환경변수 ORCA_BIN, PATH, 기본 설치 위치 순.
@@ -146,14 +171,83 @@ function launchInOrca(path, prompt) {
   console.log(out);
 }
 
-// 원래 폴더의 node_modules 를 링크(Windows 는 junction)로 연결한다.
-function linkNodeModules(main, path) {
-  const target = join(main, "node_modules");
-  const link = join(path, "node_modules");
-  if (!existsSync(target)) return "원래 폴더에 없음 — 연결하지 않음";
-  if (existsSync(link)) return "이미 있음";
-  symlinkSync(target, link, process.platform === "win32" ? "junction" : "dir");
-  return `원래 폴더 것을 연결함 (이 폴더에서 패키지를 설치하지 않는다)`;
+/**
+ * node_modules 가 있는 폴더(루트에서 두 단계 안, 저장소 루트 기준 상대 경로 — 루트는 "") 목록.
+ * 원래 폴더 node_modules 를 작업 폴더에 연결할 때(링크 · Windows 는 junction) 루트뿐 아니라 모노레포의 앱 ·
+ * 패키지(`apps/web` 등) 것까지 연결해야 한다 — 앱 폴더 것이 빠지면 그 앱의 린트 설정(예: eslint-config-next) ·
+ * 테스트 도구를 못 찾아 검사가 실패한다.
+ *
+ * @param requirePackageJson 앱 · 패키지(package.json 옆)의 node_modules 만. 연결을 끊을 때는 false — 무엇이든 찾는다.
+ */
+export function nodeModulesDirs(main, requirePackageJson = true) {
+  const out = [];
+  const visit = (rel, depth) => {
+    const abs = join(main, rel);
+    const isPackage = rel === "" || !requirePackageJson || existsSync(join(abs, "package.json"));
+    if (existsSync(join(abs, "node_modules")) && isPackage) out.push(rel);
+    if (depth === 0) return;
+    let entries = [];
+    try {
+      entries = readdirSync(abs, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      if (!e.isDirectory() || e.name.startsWith(".") || e.name === "node_modules") continue;
+      visit(rel ? `${rel}/${e.name}` : e.name, depth - 1);
+    }
+  };
+  visit("", 2);
+  return out;
+}
+
+export function linkNodeModules(main, path) {
+  const dirs = nodeModulesDirs(main);
+  if (dirs.length === 0) return "원래 폴더에 없음 — 연결하지 않음";
+  const linked = [];
+  for (const rel of dirs) {
+    const link = join(path, rel, "node_modules");
+    if (existsSync(link) || !existsSync(join(path, rel))) continue;
+    symlinkSync(join(main, rel, "node_modules"), link, process.platform === "win32" ? "junction" : "dir");
+    linked.push(rel || ".");
+  }
+  return linked.length
+    ? `원래 폴더 것을 연결함 — ${linked.join(", ")} (이 폴더에서 패키지를 설치하지 않는다)`
+    : "이미 있음";
+}
+
+/**
+ * 설정 "작업 폴더 복사" 의 git 무시 파일(로컬 설정 · 테스트 설정)을 원래 폴더에서 복사한다. 저장소 밖 경로(`..` ·
+ * 절대 경로)와 git 이 무시하지 않는 파일은 복사하지 않는다 — 무시되지 않는 파일을 복사하면 작업 폴더에 새 파일로
+ * 잡혀 검사 · 민감 정보 검사 · 작업 폴더 지우기에 섞인다.
+ */
+export function copyIgnoredFiles(main, path, list) {
+  const copied = [];
+  for (const rel of list.split(",").map((f) => f.trim()).filter(Boolean)) {
+    if (isAbsolute(rel) || rel.split(/[\\/]/).includes("..")) {
+      console.log(`⚠️ 작업 폴더 복사: 저장소 안 상대 경로만 받는다 — 건너뜀: ${rel}`);
+      continue;
+    }
+    const from = join(main, rel);
+    const to = join(path, rel);
+    if (!existsSync(from) || existsSync(to)) continue;
+    if (!git(["check-ignore", "-q", rel], main).ok) {
+      console.log(`⚠️ 작업 폴더 복사: git 이 무시하는 파일이 아니라 건너뜀 — ${rel}`);
+      continue;
+    }
+    mkdirSync(dirname(to), { recursive: true });
+    copyFileSync(from, to);
+    copied.push(rel);
+  }
+  return copied;
+}
+
+/** 작업 폴더 안의 연결(junction · symlink)을 모두 끊는다 — 그대로 지우면 링크를 따라가 원래 폴더 것까지 지운다. */
+export function unlinkAll(path) {
+  for (const rel of nodeModulesDirs(path, false)) {
+    const link = join(path, rel, "node_modules");
+    if (existsSync(link) && lstatSync(link).isSymbolicLink()) unlinkSync(link);
+  }
 }
 
 function list(main) {
@@ -179,9 +273,8 @@ function remove(main, args) {
   if (dirty.length) fail(`바뀐 파일이 ${dirty.length}개 있어 지우지 않습니다 (커밋 · push 했는지 확인):\n${dirty.slice(0, 10).join("\n")}`);
   const branch = git(["branch", "--show-current"], path).out;
 
-  // 연결한 node_modules 를 먼저 끊는다. 그대로 지우면 링크를 따라가 원래 폴더의 node_modules 까지 지울 수 있다.
-  const link = join(path, "node_modules");
-  if (existsSync(link) && lstatSync(link).isSymbolicLink()) unlinkSync(link);
+  // 연결한 node_modules(루트 · 앱별)를 먼저 끊는다. 그대로 지우면 링크를 따라가 원래 폴더의 node_modules 까지 지울 수 있다.
+  unlinkAll(path);
 
   const removed = git(["worktree", "remove", path], main);
   if (!removed.ok) fail(`작업 폴더를 지우지 못했습니다: ${removed.err}`);

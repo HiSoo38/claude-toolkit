@@ -9,7 +9,7 @@
     {
       "name": "han-pipeline",
       "source": "./plugins/han-pipeline",
-      "description": "개발 요청 하나를 현황 파악 → 구조 설계(코드 분리) → 테스트 먼저 구현 → 검사 관문 → 화면 자동 테스트 → 리뷰(Codex · Claude) → 머지까지 진행하는 개발 파이프라인. 여러 기능은 worktree 로 동시에, 입력 문서 우선, PC 자원에 맞춰 돈다",
+      "description": "개발 요청 하나를 이 세션에서 직접 고치기 → 바꾼 파일 테스트 → 기능 단위 커밋 → PR 하나 → 리뷰 → 이슈까지 한 번의 명령으로 끝내는 개발 파이프라인. 계획서 · 동시 진행은 필요할 때만, 입력 문서 우선, PC 자원에 맞춰 돈다",
       "category": "development",
       "tags": ["workflow", "pipeline", "review", "testing", "worktree"]
     },
