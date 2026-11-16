@@ -1,9 +1,9 @@
 ---
 name: run-wave
 description: docs/tasks/ 의 작업 카드에서 다음 웨이브(의존 작업이 모두 머지된 작업들)를 골라, 작업마다 Orca worktree 를 만들고 Claude 를 띄워 동시에 진행시킨다. 각 Claude 는 /dev-pipeline:work-task 로 구현 → 테스트 → 리뷰 → 블로커 수정까지 하고 Orca 카드 상태로 결과를 알린다.
-argument-hint: "[웨이브 번호 | T번호 ...] [--yes] [--allow-draft]"
+argument-hint: "[웨이브 번호 | T번호 ...] [--yes] [--allow-draft] [--no-push]"
 disable-model-invocation: true
-allowed-tools: Bash(orca status*) Bash(orca repo list*) Bash(orca repo show*) Bash(orca worktree list *) Bash(orca worktree create *) Bash(orca worktree set *) Bash(orca terminal switch *) Bash(printf *) Bash(mkdir *) Bash(git rev-parse *) Bash(git status *) Bash(git branch *) Bash(git log *) Bash(git reflog *) Bash(git merge-base *) Bash(git hash-object *) Read Glob Grep
+allowed-tools: Bash(orca status*) Bash(orca repo list*) Bash(orca repo show*) Bash(orca worktree list *) Bash(orca worktree create *) Bash(orca worktree set *) Bash(orca terminal switch *) Bash(orca terminal list *) Bash(orca terminal read *) Bash(orca terminal send *) Bash(printf *) Bash(mkdir *) Bash(git rev-parse *) Bash(git status *) Bash(git branch *) Bash(git log *) Bash(git reflog *) Bash(git merge-base *) Bash(git hash-object *) Read Glob Grep
 ---
 
 # /run-wave — 웨이브 동시 실행
@@ -16,7 +16,7 @@ allowed-tools: Bash(orca status*) Bash(orca repo list*) Bash(orca repo show*) Ba
 
 하나라도 실패하면 이유와 해결 방법을 알리고 멈춘다.
 
-1. `orca status` 의 `runtimeReachable` 이 `true` 인지. 아니면 "Orca 앱을 실행하세요 (`orca open`)".
+1. `orca status --json` 의 `result.runtime.reachable` 이 `true` 인지. 아니면 "Orca 앱을 실행하세요 (`orca open`)".
 2. 프로젝트 `CLAUDE.md` 의 "기술 스택" 이 채워져 있는지. 아니면 `/dev-pipeline:init-pipeline` 안내.
 3. "파이프라인 설정" 에서 기준 브랜치와 동시 작업 수를 읽는다. 없으면 `docs/tasks/plan.md` 머리말의 값을 쓰고, 거기도 없으면 기준 브랜치 `main`, 동시 작업 수 3.
 4. `git rev-parse --abbrev-ref HEAD` 가 기준 브랜치인지.
@@ -38,6 +38,7 @@ allowed-tools: Bash(orca status*) Bash(orca repo list*) Bash(orca repo show*) Ba
 2. 작업마다 상태를 판정한다.
    - **머지됨**: 아래 "머지 판정" 이 참이다.
    - **진행 중**: `orca worktree list --repo path:<루트> --json` 에 그 브랜치(`refs/heads/<브랜치>`)의 worktree 가 있다. 그 worktree 의 `workspaceStatus` 와 `comment` 를 함께 기록한다.
+   - **멈춤**: 진행 중이고 카드가 `in-progress` 인데, 그 worktree 터미널(`orca terminal list --worktree path:<worktree 경로> --json`)의 `lastOutputAt` 이 15분 넘게 지났거나 살아 있는 터미널이 없다 (사용량 한도 · 세션 종료 등으로 끊긴 작업). 리뷰 통과(`in-review`)나 "중단" · "블로커" 코멘트는 멈춤이 아니다.
    - **대기**: 둘 다 아니다.
    **머지 판정** — `git branch --merged` 만 보면 안 된다. 커밋이 하나도 없는 작업 브랜치는 끝이 기준 브랜치의 옛 커밋과 같아서 "머지됨" 으로 잘못 나온다.
    1. 브랜치가 있으면: 생성 커밋 `C` = `git reflog show --format=%H <브랜치>` 의 마지막 줄, 끝 커밋 `H` = `git rev-parse <브랜치>`.
@@ -50,7 +51,8 @@ allowed-tools: Bash(orca status*) Bash(orca repo list*) Bash(orca repo show*) Ba
    - 인자에 웨이브 번호가 있으면 그 웨이브의 대기 작업.
    - 인자가 없으면 **대기 작업이 남은 가장 낮은 웨이브**에서, 의존 작업이 모두 머지된 대기 작업.
 4. 동시 작업 수 = 설정값 − 진행 중인 작업 수. 띄울 작업이 더 많으면 작업 번호 순으로 그만큼만 띄우고 나머지는 "다음에 띄움" 으로 둔다.
-5. 띄울 작업이 없으면 이유를 알리고 멈춘다 (예: "웨이브 2 의 T2·T3 이 진행 중입니다", "T1 이 아직 머지되지 않아 웨이브 2 를 띄울 수 없습니다", "모든 작업이 머지됐습니다").
+5. **멈춘 작업 이어하기**: 멈춤 작업이 있으면 표(작업 · 마지막 출력 시각 · `orca terminal read --terminal <handle> --limit 20 --json` 의 마지막 몇 줄)로 보여주고 "이어서 실행할까요?" 를 묻는다 (`--yes` 면 묻지 않음). 승인하면 터미널이 살아 있는 작업은 `orca terminal send --terminal <handle> --text "/dev-pipeline:work-task T<번호> <원래 인자>" --enter --json` 으로 다시 시작시킨다 (`work-task` 0단계가 끝난 단계를 건너뛴다). 마지막 줄이 사용량 한도 안내면 보내지 않고 "한도가 풀린 뒤 다시 실행하세요" 라고 알린다. 터미널이 없으면 사용자에게 Orca 의 그 작업 탭에서 `claude` 를 열고 같은 명령을 실행해 달라고 알린다. 멈춤 작업은 동시 작업 수에 포함한다.
+6. 띄울 작업이 없으면 이유를 알리고 멈춘다 (예: "웨이브 2 의 T2·T3 이 진행 중입니다", "T1 이 아직 머지되지 않아 웨이브 2 를 띄울 수 없습니다", "모든 작업이 머지됐습니다").
 
 ## 2단계 — 확인
 
@@ -64,7 +66,7 @@ allowed-tools: Bash(orca status*) Bash(orca repo list*) Bash(orca repo show*) Ba
 orca worktree create --repo "path:<루트>" --name <브랜치> --no-parent --base-branch <기준> --agent claude --prompt "/dev-pipeline:work-task T<번호>" --json
 ```
 
-- 0단계에서 초안 진행을 승인받았으면 프롬프트를 `"/dev-pipeline:work-task T<번호> --allow-draft"` 로 한다.
+- 0단계에서 초안 진행을 승인받았으면 프롬프트에 ` --allow-draft` 를, 인자에 `--no-push` 가 있으면 ` --no-push` 를 붙인다 (예: `"/dev-pipeline:work-task T<번호> --allow-draft --no-push"`).
 - `--name` 이 곧 브랜치명이 된다 (카드의 브랜치 값을 그대로 쓴다).
 - 각 Claude 는 시작하자마자 `/dev-pipeline:work-task T<번호>` 를 실행해 자기 worktree 에서 작업한다.
 - 결과 JSON 에서 `ok`, `result.worktree.path`, `result.worktree.branch`, 에이전트 터미널 핸들(`launch.outcome.handle` 또는 결과 안의 `handle`)을 확인한다. 실패한 작업은 `error` 를 기록하고 나머지는 계속 띄운다. 같은 이름의 worktree 가 이미 있다는 오류면 "진행 중" 으로 본다.

@@ -16,7 +16,7 @@
     {
       "name": "dev-pipeline",
       "source": "./plugins/dev-pipeline",
-      "description": "계약 문서 → 작업 분할 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex)의 멀티 에이전트 개발 파이프라인",
+      "description": "요구사항 하나로 계약 문서(기존 코드 반영) → 계획 · 계획 리뷰 → Orca 로 여러 기능 동시 구현 → 별도 에이전트 리뷰(Claude · Codex) → 머지까지 이어서 하는 멀티 에이전트 개발 파이프라인",
       "category": "development",
       "tags": ["workflow", "multi-agent", "worktree", "review"]
     },

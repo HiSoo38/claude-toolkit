@@ -1,7 +1,7 @@
 ---
 name: work-task
 description: 작업 worktree 안에서 작업 카드(docs/tasks/T<번호>.md) 하나를 끝까지 진행한다. implementer 에이전트에게 구현·테스트를 맡기고, /dev-pipeline:review-diff 로 리뷰받고, 블로커가 있으면 고쳐서 다시 리뷰받고, 통과하면 사용자의 커밋 규칙대로 작업 브랜치에 커밋한 뒤 push 는 사용자에게 묻는다. 진행 상태는 Orca 카드(상태·코멘트)로 알린다. /run-wave 가 각 worktree 에서 자동으로 실행하며, 직접 실행해도 된다.
-argument-hint: "T<번호> [--allow-draft]"
+argument-hint: "T<번호> [--allow-draft] [--no-push]"
 disable-model-invocation: true
 allowed-tools: Bash(orca worktree set *) Bash(orca status*) Bash(printf *) Bash(mkdir *) Bash(git rev-parse *) Bash(git status *) Bash(git diff *) Bash(git log *) Bash(git branch *) Bash(git add *) Bash(git commit *) Bash(git remote *) Bash(git rev-list *) Read Glob Grep
 ---
@@ -37,7 +37,18 @@ mkdir -p "<공용 git 폴더>/dev-pipeline" && printf '%s\n' "<YYYY-MM-DD HH:MM>
 3. "파이프라인 설정" 에서 리뷰어(없으면 `both`), 리뷰 수정 횟수(없으면 2), 기준 브랜치(없으면 `main`), 작업 브랜치 커밋(없으면 `자동`), push(없으면 `물어봄`)를 읽는다.
 4. `docs/tasks/T<번호>.md`(카드), `docs/tasks/checklist.md` 의 "T<번호>" 섹션(구현 체크리스트), `docs/tasks/plan.md` 의 "작업 간 공통 약속" 을 읽는다. 카드가 없으면 카드 갱신("중단: 작업 카드 없음", `--unread`) 후 멈춘다. 체크리스트 섹션이 없으면 경고하고 카드만으로 진행한다.
 5. 현재 브랜치가 카드의 브랜치와 다르면 경고만 하고 계속한다. 현재 브랜치가 기준 브랜치면 멈춘다 (기준 브랜치에서 직접 작업하지 않는다).
-6. 카드 갱신: `in-progress`, "T<번호> 구현 중". 진행 로그에는 "시작 (브랜치 <브랜치>, 체크리스트 <n>개 항목)" 도 남긴다.
+6. **이어하기 확인** — 이 작업을 전에 하다 끊겼는지 본다 (사용량 한도 · 세션 종료 등으로 다시 실행된 경우). 아래를 위에서부터 보고 **처음으로 끝나지 않은 단계**부터 시작한다.
+
+   | 흔적 | 판단 | 시작할 단계 |
+   | --- | --- | --- |
+   | 기준 브랜치 이후 이 브랜치에 이 작업 커밋이 있고(`git log --oneline <기준>..HEAD`) 작업 중 변경이 없음 | 커밋까지 끝남 | 4.6단계 (push 확인) |
+   | `docs/tasks/results/T<번호>.md` 가 있고 결과가 "통과" | 리뷰 통과 | 4.5단계 (커밋) |
+   | 결과 파일이 "블로커 남음" · "중단" | 사람 확인 대기 | 카드만 그 상태로 다시 갱신하고 5단계 보고 |
+   | 결과 파일은 없고 담당 범위에 작업 중 변경이 있음 (`git status --short`) | 구현 일부 또는 전부 됨 | 1단계 — 단 implementer 에게 "이미 작업 중 변경이 있다. `git diff` 와 새 파일을 먼저 읽고, 체크리스트에서 끝난 항목은 건너뛰고 남은 항목만 이어서 하라" 고 알린다 |
+   | 아무 흔적 없음 | 처음 | 1단계 |
+
+   이어하기면 진행 로그에 "이어하기 — <시작 단계>부터" 를 남긴다.
+7. 카드 갱신: `in-progress`, "T<번호> 구현 중" (이어하기면 "T<번호> 이어서 진행 중 (<시작 단계>)"). 진행 로그에는 "시작 (브랜치 <브랜치>, 체크리스트 <n>개 항목)" 도 남긴다.
 
 ## 1단계 — 구현
 
@@ -152,7 +163,7 @@ Skill 도구로 `dev-pipeline:review-diff` 를 실행한다. 인자: `<리뷰어
 
 **push 는 항상 사용자에게 묻는다.** 사용자 지시에 push 규칙이 있으면 그것도 따른다 (더 엄격한 쪽).
 
-- 설정 `push` 가 `안 함` 이면 묻지 않고, 보고에 push 명령만 적는다.
+- 인자에 `--no-push` 가 있거나 설정 `push` 가 `안 함` 이면 묻지 않고, 보고에 push 명령만 적는다 (`--no-push` 는 `/dev-pipeline:build` 가 웨이브 사이 머지를 맡을 때 준다 — 각 탭이 질문에서 멈추지 않게).
 - `물어봄` 이면 AskUserQuestion 으로 "T<번호> 브랜치(`<브랜치>`)를 원격(`<remote>`)에 push 할까요?" 를 묻는다 (push / 나중에). 원격이 없으면(`git remote` 가 비어 있음) 묻지 않고 그 사실을 보고한다.
 - 승인하면 `git push -u <remote> <브랜치>` 를 실행하고 결과를 보고한다. 기준 브랜치는 push 하지 않는다. `--force` 는 쓰지 않는다.
 - 비대화형이라 물을 수 없으면 push 하지 않고 보고에 명령을 적는다.

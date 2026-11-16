@@ -2,7 +2,7 @@
 name: wave-status
 description: docs/tasks/ 의 작업들이 지금 어디까지 왔는지 한 표로 보여준다. 작업마다 웨이브, 브랜치, Orca 카드 상태·코멘트(구현 중 / 리뷰 통과 / 중단 / 블로커 남음), 머지 여부를 모으고 사람이 할 일과 다음 웨이브를 띄울 수 있는지 알려 준다.
 argument-hint: ""
-allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(git worktree list*) Bash(git rev-parse *) Bash(git branch *) Bash(git log *) Bash(git reflog *) Bash(git merge-base *) Bash(git rev-list *) Bash(git -C * status *) Read Glob Grep
+allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(orca terminal list *) Bash(git worktree list*) Bash(git rev-parse *) Bash(git branch *) Bash(git log *) Bash(git reflog *) Bash(git merge-base *) Bash(git rev-list *) Bash(git -C * status *) Read Glob Grep
 ---
 
 # /wave-status — 웨이브 진행 상황
@@ -26,6 +26,7 @@ allowed-tools: Bash(tail *) Bash(orca status*) Bash(orca worktree list *) Bash(g
 | 머지됨 | 브랜치가 기준 브랜치에 머지됨 |
 | 검수 대기 | worktree 상태 `in-review` (리뷰 통과) |
 | 사람 확인 필요 | 코멘트가 "중단" 또는 "블로커 … 남음" 으로 시작 |
+| 멈춤 | `in-progress` 인데 그 worktree 터미널(`orca terminal list --worktree path:<경로> --json`)의 `lastOutputAt` 이 15분 넘게 지났거나 터미널이 없음 — 사용량 한도 · 세션 종료 등. `/dev-pipeline:run-wave` 나 `/dev-pipeline:build` 를 다시 실행하면 이어서 시작시킨다 |
 | 진행 중 | worktree 상태 `in-progress` 이고 위에 해당하지 않음 |
 | 대기 | worktree 도 없고 머지도 안 됨 |
 
