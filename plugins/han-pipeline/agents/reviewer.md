@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: han-pipeline 의 리뷰 단계에서 브랜치 변경 전체(또는 지적 수정분)를 계획서 · 구조 설계 · 프로젝트 규칙 · 학습 규칙 기준으로 리뷰하고 꼭 고칠 것 / 고치면 좋은 것 / 사소함으로 정리한다. 읽기 전용. han-pipeline 스킬이 Codex 와 함께, 또는 Codex 대신 호출한다.
+description: han-pipeline 의 리뷰 단계에서 브랜치 변경 전체(또는 지적 수정분)를 계획서 · 구조 설계 · 프로젝트 규칙 · 학습 규칙 기준으로 리뷰하고 꼭 고칠 것 / 고치면 좋은 것 / 사소함으로 정리한다. 읽기 전용. han-pipeline 스킬이 Codex 와 함께, 또는 Codex 없이 혼자 호출한다.
 tools: Read, Glob, Grep, Bash
 model: opus
 color: purple

@@ -33,7 +33,7 @@
 /plugin install han-pipeline@claude-toolkit
 ```
 
-필요한 것: Node.js 18 이상, git. git 모드는 `gh`(로그인), 교차 리뷰는 Codex CLI(없으면 Claude 리뷰어로 대신).
+필요한 것: Node.js 18 이상, git. git 모드는 `gh`(로그인), 교차 리뷰는 Codex CLI(선택 — 없거나 자원 예산이 「빠듯」이면 Claude 리뷰어만 돈다).
 
 ## 사용
 
