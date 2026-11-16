@@ -41,6 +41,8 @@ venv/
 # 빌드 산출물
 dist/
 build/
+# 플러그인 스킬 이름이 build 인 폴더(dev-pipeline 의 /build)는 빌드 산출물이 아니다
+!plugins/*/skills/build/
 out/
 target/
 *.tsbuildinfo
