@@ -3,7 +3,7 @@ name: init-pipeline
 description: 프로젝트의 기술 스택을 감지(또는 사용자에게 선택받아)하고 dev-pipeline 템플릿(CLAUDE.md, AGENTS.md, docs/ 계약 문서)을 프로젝트에 설치한다. 파이프라인을 처음 쓰는 프로젝트, 또는 CLAUDE.md 에 "기술 스택" 섹션이 없을 때 실행한다.
 argument-hint: "[프로젝트 경로 (생략 시 현재 디렉터리)]"
 disable-model-invocation: true
-allowed-tools: Read Glob Grep Write Edit
+allowed-tools: Read Glob Grep Write Edit Bash(git symbolic-ref *) Bash(git branch *) Bash(git rev-parse *)
 ---
 
 # /init-pipeline — 스택 감지와 템플릿 설치
@@ -78,13 +78,15 @@ AskUserQuestion 을 쓸 수 없는 환경(비대화형 실행 등)이면, 위 �
 - "빌드·테스트 명령" 표: 감지한 명령. 확실하지 않은 칸은 `<!-- TODO -->` 를 그대로 둔다.
 - "패키지 구조": 감지한 디렉터리. 빈 프로젝트면 선택한 프레임워크의 관례 구조를 `<!-- TODO: 관례 구조, 실제 생성 후 확인 -->` 표시와 함께 적는다.
 - "계약 문서" 표의 스키마 경로: 3단계에서 정한 파일 경로. DB 가 없으면 "해당 없음".
+- "파이프라인 설정" 의 기준 브랜치: 실제 레포에서 정한다 — `git symbolic-ref --short refs/remotes/origin/HEAD` 의 `origin/` 뒤 이름, 없으면 `main` · `master` · `develop` 중 있는 것, 없으면 현재 브랜치. 템플릿의 `main` 을 그대로 두지 않는다.
+- "공용 코드 위치" · "코딩 컨벤션": 이미 코드가 있으면 공통 컴포넌트 · 유틸 디렉터리와 린터 · 포맷터 설정을 찾아 채운다.
 - 모르는 칸은 추측해서 채우지 말고 `<!-- TODO -->` 로 남긴다.
 
 ## 5단계 — 결과 보고
 
 - 만든 파일 / 건너뛴 파일 / 섹션만 추가한 파일 목록
 - 남은 `<!-- TODO -->` 위치
-- 다음 단계 안내: "planner 에이전트에게 요구사항을 설명해 `docs/requirements.md` 를 채우세요" → db-designer → api-designer → 사람 확정 → `/dev-pipeline:plan-tasks` → 커밋 → `/dev-pipeline:run-wave` (Orca 로 동시 실행)
+- 다음 단계 안내: `/dev-pipeline:build "<요구사항>"` 하나로 계약 문서(기존 코드 반영 포함) → 계획 → 계획 리뷰 → 확인 한 번 → Orca 동시 구현 → 머지까지 이어서 진행된다. 단계별로 직접 하려면 planner → db-designer → api-designer → `/dev-pipeline:plan-tasks` → 커밋 → `/dev-pipeline:run-wave`.
 
 ## 하지 않는 것
 
